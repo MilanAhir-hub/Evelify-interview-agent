@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import fs from "fs";
-import * as pdfjsLib from "pdfjs-dist";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
 import { askAi, Message } from "../services/openRouter.service.js";
+import InterviewSession from "../models/interviewSession.model.js";
 
 interface ResumeData {
     role: string;
@@ -122,5 +123,139 @@ Return ONLY valid JSON in this format:
             message: "Error analyzing resume",
             success: false,
         });
+    }
+};
+
+export const generateQuestions = async (req: Request, res: Response): Promise<void> => {
+    console.log("Generate Questions hit", req.body);
+    try {
+        const userId = req.id;
+        const { role, experience, projects, skills } = req.body;
+
+        const messages: Message[] = [
+            {
+                role: "system",
+                content: `You are an expert technical interviewer for top tech companies.
+Generate EXACTLY 5 interview questions personalized for a candidate with:
+Role: ${role}
+Experience: ${experience}
+Skills: ${skills.join(", ")}
+Projects: ${projects.join(", ")}
+
+The questions MUST vary:
+1. Technical depth
+2. Project-based scenario
+3. Problem-solving/Architecture
+4. Behavioral
+5. Advanced/Specific to their skills
+
+Return ONLY valid JSON in this format:
+[
+  { "text": "Question 1", "type": "technical" },
+  { "text": "Question 2", "type": "project" },
+  { "text": "Question 3", "type": "problem-solving" },
+  { "text": "Question 4", "type": "behavioral" },
+  { "text": "Question 5", "type": "advanced" }
+]`
+            }
+        ];
+
+        const response = await askAi(messages);
+
+        let questions;
+        try {
+            questions = JSON.parse(response || "[]");
+        } catch (e) {
+            console.error("Failed to parse AI response:", response);
+            res.status(500).json({ success: false, message: "AI returned invalid format." });
+            return;
+        }
+
+        if (!Array.isArray(questions) || questions.length !== 5) {
+            res.status(500).json({ success: false, message: "Failed to generate valid questions." });
+            return;
+        }
+
+        const session = new InterviewSession({
+            userId,
+            role,
+            experience,
+            projects,
+            skills,
+            questions,
+            status: 'in_progress',
+            currentQuestionIndex: 0
+        });
+
+        await session.save();
+
+        res.status(200).json({ success: true, sessionId: session._id });
+    } catch (error: any) {
+        console.error("Generate Questions Error:", error);
+        res.status(500).json({ success: false, message: "Error generating questions" });
+    }
+};
+
+export const getSession = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const session = await InterviewSession.findById(id);
+
+        if (!session) {
+            res.status(404).json({ success: false, message: "Session not found" });
+            return;
+        }
+
+        if (session.userId.toString() !== req.id) {
+            res.status(403).json({ success: false, message: "Unauthorized" });
+            return;
+        }
+
+        res.status(200).json({ success: true, session });
+    } catch (error) {
+        console.error("Get Session Error:", error);
+        res.status(500).json({ success: false, message: "Error fetching session" });
+    }
+};
+
+export const submitAnswer = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const { answer, timeSpent } = req.body;
+
+        const session = await InterviewSession.findById(id);
+        if (!session || session.userId.toString() !== req.id) {
+            res.status(404).json({ success: false, message: "Session not found or unauthorized" });
+            return;
+        }
+
+        if (session.status === 'completed') {
+            res.status(400).json({ success: false, message: "Interview already completed" });
+            return;
+        }
+
+        session.answers.push({
+            questionIndex: session.currentQuestionIndex,
+            text: answer,
+            timeSpent
+        });
+
+        session.currentQuestionIndex += 1;
+
+        if (session.currentQuestionIndex >= session.questions.length) {
+            session.status = 'completed';
+        }
+
+        await session.save();
+
+        res.status(200).json({
+            success: true,
+            status: session.status,
+            currentQuestionIndex: session.currentQuestionIndex
+        });
+
+    } catch (error) {
+        console.error("Submit Answer Error:", error);
+        res.status(500).json({ success: false, message: "Error submitting answer" });
     }
 };

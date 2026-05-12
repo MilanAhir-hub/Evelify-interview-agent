@@ -12,7 +12,7 @@ const Hero = () => {
 
   const handleStartInterview = () => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      navigate('/interview');
     } else {
       setShowAuthPopup(true);
     }

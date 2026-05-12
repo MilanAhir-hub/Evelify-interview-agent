@@ -1,9 +1,16 @@
 import OpenAI from "openai";
 
-const client = new OpenAI({
-    baseURL: "https://openrouter.ai/api/v1",
-    apiKey: process.env.OPENROUTER_API_KEY,
-});
+let clientInstance: OpenAI | null = null;
+
+const getClient = () => {
+    if (!clientInstance) {
+        clientInstance = new OpenAI({
+            baseURL: "https://openrouter.ai/api/v1",
+            apiKey: process.env.OPENROUTER_API_KEY,
+        });
+    }
+    return clientInstance;
+};
 
 export type Message = {
     role: "system" | "user" | "assistant";
@@ -14,6 +21,7 @@ export type Message = {
 
 export const askAi = async (messages: Message[]) => {
     try {
+        const client = getClient();
         const completion = await client.chat.completions.create({
             model: "openai/gpt-4o-mini",
             messages,
@@ -39,6 +47,7 @@ export const streamAi = async ({
     onChunk: (chunk: string) => void;
 }) => {
     try {
+        const client = getClient();
         const stream = await client.chat.completions.create({
             model: "openai/gpt-4o-mini",
             messages,
