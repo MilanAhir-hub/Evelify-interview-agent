@@ -3,9 +3,11 @@ import { Coins, PlusCircle } from 'lucide-react';
 import Dropdown from './Dropdown';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../redux/store';
+import PricingModal from './PricingModal';
 
 const CreditsMenu = () => {
   const { user } = useSelector((state: RootState) => state.auth);
+  const [isPricingOpen, setIsPricingOpen] = React.useState(false);
 
   const trigger = (
     <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition-colors">
@@ -17,8 +19,10 @@ const CreditsMenu = () => {
   );
 
   return (
+    <>
     <Dropdown trigger={trigger}>
       <div className="p-5 text-center">
+
         <div className="w-12 h-12 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-3 border border-yellow-500/20">
           <Coins className="w-6 h-6 text-yellow-500" />
         </div>
@@ -26,12 +30,16 @@ const CreditsMenu = () => {
         <p className="text-xs text-gray-400 mb-4 leading-relaxed">
           Need more credits to continue your interview journey?
         </p>
-        <button className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-500 to-orange-600 text-black font-bold py-2.5 px-4 rounded-xl hover:shadow-lg hover:shadow-yellow-500/10 transition-all active:scale-[0.98]">
+        <button 
+          onClick={() => setIsPricingOpen(true)}
+          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-500 to-orange-600 text-black font-bold py-2.5 px-4 rounded-xl hover:shadow-lg hover:shadow-yellow-500/10 transition-all active:scale-[0.98]">
           <PlusCircle className="w-4 h-4" />
           <span>Buy more credits</span>
         </button>
       </div>
     </Dropdown>
+    <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
+    </>
   );
 };
 

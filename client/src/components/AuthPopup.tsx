@@ -1,12 +1,13 @@
-import React from 'react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleIcon } from 'hugeicons-react';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, provider } from '../utils/firebase';
 import axios from 'axios';
 import { useDispatch } from 'react-redux';
 import { setUser } from '../redux/slices/authSlice';
-import { server_url } from '../AppRoutes';
-import { X } from 'lucide-react';
+import { server_url } from '../config';
+import { X, Loader2 } from 'lucide-react';
 
 interface AuthPopupProps {
   onClose?: () => void;
@@ -14,9 +15,11 @@ interface AuthPopupProps {
 
 const AuthPopup = ({ onClose }: AuthPopupProps) => {
   const dispatch = useDispatch();
+  const [loading, setLoading] = useState(false);
 
   const handleGoogleAuth = async () => {
     try {
+      setLoading(true);
       const response = await signInWithPopup(auth, provider);
       const { displayName: name, email } = response.user;
 
@@ -32,60 +35,105 @@ const AuthPopup = ({ onClose }: AuthPopupProps) => {
       }
     } catch (error) {
       console.error("Auth Popup Error:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+    >
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
-      ></div>
+      />
 
-      {/* Popup Content */}
-      <div className="relative w-full max-w-sm bg-[#111111] border border-white/10 rounded-[2.5rem] p-10 shadow-2xl animate-in zoom-in-95 duration-300 text-center">
-        
-        {/* Close Button (Optional) */}
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        className="relative w-full max-w-sm bg-[#111111] border border-white/10 rounded-[2.5rem] p-10 shadow-2xl text-center"
+      >
         {onClose && (
-          <button 
+          <motion.button 
+            whileHover={{ scale: 1.1, rotate: 90 }}
+            whileTap={{ scale: 0.9 }}
             onClick={onClose}
             className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
-          </button>
+          </motion.button>
         )}
 
-        {/* Icon/Logo */}
-        <div className="flex justify-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/20 rotate-3">
+        <motion.div 
+          initial={{ scale: 0, rotate: -20 }}
+          animate={{ scale: 1, rotate: 3 }}
+          transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+          className="flex justify-center mb-8"
+        >
+          <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/20">
              <span className="text-3xl font-bold italic text-white">E</span>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Text Section */}
-        <h2 className="text-2xl font-bold text-white mb-4 tracking-tight">
-          Login to Continue
-        </h2>
-        <p className="text-gray-400 text-sm leading-relaxed mb-10 px-2 font-light">
-          Unlock the full potential of Evelify. Sign in to save your interview progress and access advanced AI features.
-        </p>
-
-        {/* Google Button */}
-        <button 
-          onClick={handleGoogleAuth}
-          className="w-full group bg-white hover:bg-gray-100 text-black font-bold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 active:scale-[0.98] shadow-lg hover:shadow-white/10"
+        <motion.h2 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="text-2xl font-bold text-white mb-4 tracking-tight"
         >
-          <GoogleIcon className="w-5 h-5 text-black group-hover:scale-110 transition-transform" />
-          <span>Continue with Google</span>
-        </button>
+          Login to Continue
+        </motion.h2>
+        
+        <motion.p 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="text-gray-400 text-sm leading-relaxed mb-10 px-2 font-light"
+        >
+          Unlock the full potential of Evelify. Sign in to save your interview progress and access advanced AI features.
+        </motion.p>
 
-        {/* Subtle Footer */}
-        <p className="mt-8 text-[10px] text-gray-600 uppercase tracking-widest font-semibold">
+        <motion.button 
+          whileHover={{ scale: 1.02, boxShadow: "0 10px 40px rgba(255,255,255,0.15)" }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleGoogleAuth}
+          disabled={loading}
+          className="w-full group bg-white hover:bg-gray-100 text-black font-bold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-white/10 disabled:opacity-70"
+        >
+          {loading ? (
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            >
+              <Loader2 className="w-5 h-5 text-black" />
+            </motion.div>
+          ) : (
+            <>
+              <GoogleIcon className="w-5 h-5 text-black group-hover:scale-110 transition-transform" />
+              <span>Continue with Google</span>
+            </>
+          )}
+        </motion.button>
+
+        <motion.p 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="mt-8 text-[10px] text-gray-600 uppercase tracking-widest font-semibold"
+        >
           Evelify AI Agent
-        </p>
-      </div>
-    </div>
+        </motion.p>
+      </motion.div>
+    </motion.div>
   );
 };
 

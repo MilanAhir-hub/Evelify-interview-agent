@@ -1,5 +1,8 @@
+import dns from 'node:dns';
+dns.setServers(['8.8.8.8', '1.1.1.1']);
+
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ override: true });
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import connectDB from './config/connectDB.js';
@@ -8,6 +11,7 @@ import cookieParser from 'cookie-parser';
 import UserRoutes from './routes/user.route.js';
 import InterviewRoutes from './routes/interview.route.js';
 import ReportRoutes from './routes/report.route.js';
+import PaymentRoutes from './routes/payment.route.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -28,11 +32,12 @@ app.use((req, res, next) => {
 
 
 // All routes
-app.use('/api/interview', InterviewRoutes);
 app.use('/api/auth', AuthRoutes);
+app.use('/api/interview', InterviewRoutes);
 app.use('/api/user', UserRoutes);
 app.use('/api/report', ReportRoutes);
-app.get('/api/report-test', (req, res) => res.json({ success: true }));
+app.use('/api/payment', PaymentRoutes);
+
 
 // Basic Route
 app.get('/', (req: Request, res: Response) => {

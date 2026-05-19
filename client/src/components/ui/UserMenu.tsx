@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { LogOut, History } from 'lucide-react';
 import { logoutUser } from '../../redux/slices/authSlice';
 import axios from 'axios';
-import { server_url } from '../../AppRoutes';
+import { server_url } from '../../config';
 import type { RootState } from '../../redux/store';
 import Dropdown from './Dropdown';
 

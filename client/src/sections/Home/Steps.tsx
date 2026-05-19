@@ -1,4 +1,4 @@
-import React from 'react';
+import { motion } from 'framer-motion';
 import StepCard from '../../components/StepCard';
 import { Briefcase, Mic, Timer } from 'lucide-react';
 
@@ -25,22 +25,48 @@ const Steps = () => {
   ];
 
   return (
-    <section className="py-24 relative overflow-hidden">
-      <div className="container mx-auto px-6">
-        <div className="text-center mb-16">
+    <section className="py-32 relative overflow-hidden bg-[#050505]">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/5 to-transparent"
+      />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-16"
+        >
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">How it works</h2>
-          <div className="w-20 h-1 bg-gradient-to-r from-blue-600 to-purple-600 mx-auto rounded-full"></div>
-        </div>
+          <motion.div 
+            initial={{ scaleX: 0 }}
+            whileInView={{ scaleX: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="w-20 h-1 bg-gradient-to-r from-blue-600 to-purple-600 mx-auto rounded-full origin-center"
+          />
+        </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {steps.map((item, index) => (
-            <StepCard 
+            <motion.div
               key={index}
-              step={item.step}
-              title={item.title}
-              description={item.description}
-              icon={item.icon}
-            />
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: index * 0.15 }}
+            >
+              <StepCard 
+                step={item.step}
+                title={item.title}
+                description={item.description}
+                icon={item.icon}
+              />
+            </motion.div>
           ))}
         </div>
       </div>

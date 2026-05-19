@@ -9,6 +9,41 @@ export interface ResumeAnalysisResponse {
   resumeText: string;
 }
 
+export interface InterviewHistoryItem {
+  _id: string;
+  role: string;
+  experience: string;
+  skills: string[];
+  projects: string[];
+  status: string;
+  createdAt: string;
+  report: {
+    averageScore: number;
+    finalCredits: number;
+    recommendation: string;
+    strengths: string[];
+    weaknesses: string[];
+    analytics: {
+      communication: number;
+      technical: number;
+      confidence: number;
+      problemSolving: number;
+      behavioral: number;
+    };
+  } | null;
+}
+
+export interface InterviewHistoryResponse {
+  success: boolean;
+  data: InterviewHistoryItem[];
+  pagination: {
+    totalCount: number;
+    currentPage: number;
+    totalPages: number;
+    limit: number;
+  };
+}
+
 export const interviewApi = {
   /**
    * Uploads a resume and gets AI-analyzed data
@@ -47,6 +82,11 @@ export const interviewApi = {
 
   submitAnswer: async (sessionId: string, answer: string, timeSpent: number) => {
     const response = await api.post(`/interview/session/${sessionId}/answer`, { answer, timeSpent });
+    return response.data;
+  },
+
+  fetchInterviewHistory: async (page: number = 1, limit: number = 10): Promise<InterviewHistoryResponse> => {
+    const response = await api.get<InterviewHistoryResponse>(`/interview/history?page=${page}&limit=${limit}`);
     return response.data;
   }
 };

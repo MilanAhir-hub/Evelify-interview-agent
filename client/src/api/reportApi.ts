@@ -30,7 +30,8 @@ export interface InterviewReportData {
 }
 
 export const reportApi = {
-    generateReport: async (sessionId: string): Promise<{ success: boolean; report?: InterviewReportData; message?: string }> => {
+    generateReport: async (sessionId: string): Promise<{ success: boolean; report?: InterviewReportData; user?: any; message?: string }> => {
+
         try {
             console.log('Generating report for session:', sessionId);
             const response = await api.post('/report/generate', { sessionId });

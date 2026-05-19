@@ -1,4 +1,4 @@
-import React from 'react';
+import { motion } from 'framer-motion';
 import ModeCard from '../../components/ModeCard';
 import { Users, Code2, Waves, Zap } from 'lucide-react';
 
@@ -27,26 +27,68 @@ const Modes = () => {
   ];
 
   return (
-    <section className="py-24 bg-[#080808]">
-      <div className="container mx-auto px-6">
-        <div className="mb-16">
+    <section className="py-32 bg-[#080808] relative overflow-hidden">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        className="absolute inset-0 bg-gradient-to-b from-blue-600/5 via-transparent to-indigo-600/5"
+      />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="mb-16"
+        >
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-[1px] bg-blue-500"></div>
-            <span className="text-blue-500 text-sm font-bold uppercase tracking-widest">Versatile Experience</span>
+            <motion.div 
+              initial={{ scaleX: 0 }}
+              whileInView={{ scaleX: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="w-10 h-[1px] bg-blue-500 origin-left"
+            />
+            <motion.span 
+              initial={{ opacity: 0, x: -10 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="text-blue-500 text-sm font-bold uppercase tracking-widest"
+            >
+              Versatile Experience
+            </motion.span>
           </div>
           <h2 className="text-3xl md:text-5xl font-bold text-white tracking-tight">
-            Multiple Interview <span className="text-blue-500">Modes</span>
+            Multiple Interview <motion.span 
+              initial={{ backgroundPosition: "0% 50%" }}
+              whileInView={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
+              viewport={{ once: true }}
+              transition={{ duration: 3, repeat: Infinity }}
+              className="text-blue-500 bg-gradient-to-r from-blue-400 to-blue-600 bg-[length:200%_auto] bg-clip-text text-transparent"
+            >
+              Modes
+            </motion.span>
           </h2>
-        </div>
+        </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {modes.map((mode, index) => (
-            <ModeCard 
+            <motion.div
               key={index}
-              title={mode.title}
-              description={mode.description}
-              icon={mode.icon}
-            />
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.12 }}
+            >
+              <ModeCard 
+                title={mode.title}
+                description={mode.description}
+                icon={mode.icon}
+              />
+            </motion.div>
           ))}
         </div>
       </div>

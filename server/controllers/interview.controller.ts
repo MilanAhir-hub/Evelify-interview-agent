@@ -4,6 +4,8 @@ import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
 import { askAi, Message } from "../services/openRouter.service.js";
 import InterviewSession from "../models/interviewSession.model.js";
+import InterviewReport from "../models/interviewReport.model.js";
+import User from "../models/user.model.js";
 
 interface ResumeData {
     role: string;
@@ -130,7 +132,21 @@ export const generateQuestions = async (req: Request, res: Response): Promise<vo
     console.log("Generate Questions hit", req.body);
     try {
         const userId = req.id;
+
+        // Check user credits
+        const user = await User.findById(userId);
+        if (!user) {
+            res.status(404).json({ success: false, message: "User not found" });
+            return;
+        }
+        
+        if (user.credits < 10) {
+            res.status(402).json({ success: false, message: "Insufficient credits" });
+            return;
+        }
+
         const { role, experience, projects, skills } = req.body;
+
 
         const messages: Message[] = [
             {
@@ -189,7 +205,12 @@ Return ONLY valid JSON in this format:
 
         await session.save();
 
-        res.status(200).json({ success: true, sessionId: session._id });
+        res.status(200).json({ 
+            success: true, 
+            sessionId: session._id,
+        });
+
+
     } catch (error: any) {
         console.error("Generate Questions Error:", error);
         res.status(500).json({ success: false, message: "Error generating questions" });
@@ -257,5 +278,65 @@ export const submitAnswer = async (req: Request, res: Response): Promise<void> =
     } catch (error) {
         console.error("Submit Answer Error:", error);
         res.status(500).json({ success: false, message: "Error submitting answer" });
+    }
+};
+
+export const getInterviewHistory = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const userId = req.id;
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+        const skip = (page - 1) * limit;
+
+        const totalCount = await InterviewSession.countDocuments({
+            userId,
+            status: 'completed'
+        });
+
+        const sessions = await InterviewSession.find({
+            userId,
+            status: 'completed'
+        })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        const sessionsWithReports = await Promise.all(
+            sessions.map(async (session) => {
+                const report = await InterviewReport.findOne({ interviewId: session._id });
+                return {
+                    _id: session._id,
+                    role: session.role,
+                    experience: session.experience,
+                    skills: session.skills,
+                    projects: session.projects,
+                    status: session.status,
+                    createdAt: session.createdAt,
+                    report: report ? {
+                        averageScore: report.averageScore,
+                        finalCredits: report.finalCredits,
+                        recommendation: report.recommendation,
+                        strengths: report.strengths,
+                        weaknesses: report.weaknesses,
+                        analytics: report.analytics
+                    } : null
+                };
+            })
+        );
+
+        res.status(200).json({
+            success: true,
+            data: sessionsWithReports,
+            pagination: {
+                totalCount,
+                currentPage: page,
+                totalPages: Math.ceil(totalCount / limit),
+                limit
+            }
+        });
+
+    } catch (error) {
+        console.error("Get Interview History Error:", error);
+        res.status(500).json({ success: false, message: "Error fetching interview history" });
     }
 };

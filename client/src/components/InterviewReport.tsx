@@ -1,25 +1,235 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type{ reportApi, InterviewReportData, Evaluation } from '../api/reportApi';
-import { 
-    Award, Brain, Target, MessageSquare, ShieldCheck, 
-    ChevronDown, ChevronUp, Sparkles, Activity, AlertTriangle, 
-    CheckCircle2, XCircle, FileText, BarChart3
+import { reportApi } from '../api/reportApi';
+import type { InterviewReportData, Evaluation } from '../api/reportApi';
+import { useDispatch } from 'react-redux';
+import { setUser } from '../redux/slices/authSlice';
+import jsPDF from 'jspdf';
+
+import {
+    Brain, MessageSquare,
+    ChevronDown, ChevronUp, Sparkles, Activity, AlertTriangle,
+    CheckCircle2, XCircle, FileText, BarChart3, Download
 } from 'lucide-react';
 
 interface Props {
     sessionId?: string;
     reportId?: string;
+    onReset?: () => void;
 }
 
-const InterviewReport: React.FC<Props> = ({ sessionId, reportId }) => {
+const generatePDF = async (report: InterviewReportData) => {
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 15;
+    const contentWidth = pageWidth - 2 * margin;
+
+    let yPos = margin;
+
+    const checkPageBreak = (neededHeight: number) => {
+        if (yPos + neededHeight > pageHeight - margin) {
+            pdf.addPage();
+            yPos = margin;
+        }
+    };
+
+    pdf.setFillColor(15, 19, 34);
+    pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+
+    pdf.setFillColor(30, 41, 59);
+    pdf.roundedRect(margin, yPos, contentWidth, 45, 3, 3, 'F');
+    
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(22);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Interview Analysis Report', margin + 10, yPos + 15);
+    
+    pdf.setFontSize(10);
+    pdf.setTextColor(156, 163, 175);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text('Comprehensive evaluation of your performance', margin + 10, yPos + 25);
+    
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(59, 130, 246);
+    pdf.text(`${report.finalCredits}%`, margin + 10, yPos + 38);
+    pdf.setFontSize(9);
+    pdf.setTextColor(156, 163, 175);
+    pdf.text('Final Score', margin + 10, yPos + 43);
+
+    const recText = report.recommendation;
+    pdf.setFontSize(11);
+    pdf.setTextColor(34, 197, 94);
+    if (report.recommendation === 'Needs Improvement') pdf.setTextColor(239, 68, 68);
+    else if (report.recommendation === 'Average') pdf.setTextColor(234, 179, 8);
+    pdf.text(recText, margin + 70, yPos + 38);
+    pdf.setFontSize(9);
+    pdf.setTextColor(156, 163, 175);
+    pdf.text('Recommendation', margin + 70, yPos + 43);
+
+    yPos += 55;
+
+    pdf.setFillColor(30, 41, 59);
+    pdf.roundedRect(margin, yPos, contentWidth / 2 - 5, 35, 2, 2, 'F');
+    pdf.roundedRect(margin + contentWidth / 2 + 5, yPos, contentWidth / 2 - 5, 35, 2, 2, 'F');
+
+    pdf.setFontSize(11);
+    pdf.setTextColor(34, 197, 94);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Key Strengths', margin + 10, yPos + 10);
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(209, 213, 219);
+    let strengthText = report.strengths.slice(0, 3).join(', ');
+    if (report.strengths.length > 3) strengthText += '...';
+    const strengthLines = pdf.splitTextToSize(strengthText, contentWidth / 2 - 20);
+    pdf.text(strengthLines, margin + 10, yPos + 18);
+
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(239, 68, 68);
+    pdf.text('Areas to Improve', margin + contentWidth / 2 + 10, yPos + 10);
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(209, 213, 219);
+    let weaknessText = report.weaknesses.slice(0, 3).join(', ');
+    if (report.weaknesses.length > 3) weaknessText += '...';
+    const weaknessLines = pdf.splitTextToSize(weaknessText, contentWidth / 2 - 20);
+    pdf.text(weaknessLines, margin + contentWidth / 2 + 10, yPos + 18);
+
+    yPos += 45;
+
+    pdf.setFillColor(30, 41, 59);
+    pdf.roundedRect(margin, yPos, contentWidth, 25, 2, 2, 'F');
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(59, 130, 246);
+    pdf.text('Core Metrics', margin + 10, yPos + 10);
+
+    const metrics = [
+        { label: 'Communication', value: report.analytics.communication },
+        { label: 'Technical', value: report.analytics.technical },
+        { label: 'Problem Solving', value: report.analytics.problemSolving },
+        { label: 'Confidence', value: report.analytics.confidence },
+    ];
+
+    const barWidth = 50;
+    const startX = margin + 10;
+    metrics.forEach((metric, i) => {
+        const x = startX + i * (barWidth + 15);
+        pdf.setFontSize(8);
+        pdf.setTextColor(156, 163, 175);
+        pdf.text(metric.label, x, yPos + 16);
+        pdf.setFillColor(55, 65, 81);
+        pdf.roundedRect(x, yPos + 18, barWidth, 4, 1, 1, 'F');
+        pdf.setFillColor(59, 130, 246);
+        pdf.roundedRect(x, yPos + 18, (barWidth * metric.value) / 100, 4, 1, 1, 'F');
+        pdf.setFontSize(8);
+        pdf.setTextColor(255, 255, 255);
+        pdf.text(`${metric.value}%`, x + barWidth / 2 - 5, yPos + 26);
+    });
+
+    yPos += 35;
+
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(255, 255, 255);
+    pdf.text('Question-by-Question Breakdown', margin, yPos);
+    yPos += 10;
+
+    for (let i = 0; i < report.evaluations.length; i++) {
+        const evalItem = report.evaluations[i];
+        checkPageBreak(80);
+
+        pdf.setFillColor(30, 41, 59);
+        pdf.roundedRect(margin, yPos, contentWidth, 75, 2, 2, 'F');
+
+        pdf.setFontSize(10);
+        pdf.setTextColor(59, 130, 246);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`Question ${i + 1}`, margin + 10, yPos + 8);
+
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(255, 255, 255);
+        const questionLines = pdf.splitTextToSize(evalItem.question, contentWidth - 30);
+        pdf.text(questionLines, margin + 10, yPos + 16);
+
+        const scoreColor = evalItem.score >= 8 ? [34, 197, 94] : evalItem.score >= 5 ? [234, 179, 8] : [239, 68, 68];
+        pdf.setFillColor(scoreColor[0], scoreColor[1], scoreColor[2]);
+        pdf.circle(margin + contentWidth - 15, yPos + 10, 6, 'F');
+        pdf.setFontSize(8);
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(String(evalItem.score), margin + contentWidth - 17, yPos + 11.5, { align: 'center' });
+
+        yPos += 22;
+
+        pdf.setFontSize(8);
+        pdf.setTextColor(156, 163, 175);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Your Answer:', margin + 10, yPos);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(209, 213, 219);
+        const userAnsLines = pdf.splitTextToSize(evalItem.userAnswer, contentWidth - 30);
+        pdf.text(userAnsLines, margin + 10, yPos + 5);
+
+        const userAnsHeight = userAnsLines.length * 4;
+        yPos += userAnsHeight + 5;
+
+        pdf.setFontSize(8);
+        pdf.setTextColor(96, 165, 250);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Ideal Answer:', margin + 10, yPos);
+        pdf.setFont('helvetica', 'normal');
+        const aiAnsLines = pdf.splitTextToSize(evalItem.aiIdealAnswer, contentWidth - 30);
+        pdf.text(aiAnsLines, margin + 10, yPos + 5);
+
+        const aiAnsHeight = aiAnsLines.length * 4;
+        yPos += aiAnsHeight + 10;
+
+        if (yPos > pageHeight - 30) {
+            pdf.addPage();
+            yPos = margin;
+        }
+    }
+
+    pdf.setTextColor(156, 163, 175);
+    pdf.setFontSize(8);
+    pdf.text('Generated by Evelify', pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+    pdf.save('interview-report.pdf');
+};
+
+const InterviewReport: React.FC<Props> = ({ sessionId, reportId, onReset }) => {
+    const dispatch = useDispatch();
     const [report, setReport] = useState<InterviewReportData | null>(null);
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
+    const hasFetched = useRef(false);
+
+    const handleDownloadPDF = async () => {
+        if (!report) return;
+        setDownloadingPdf(true);
+        try {
+            await generatePDF(report);
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+        } finally {
+            setDownloadingPdf(false);
+        }
+    };
 
     useEffect(() => {
+        // Guard: prevent React StrictMode double-mount from firing two concurrent API calls
+        if (hasFetched.current) return;
+
         const fetchReport = async () => {
+            hasFetched.current = true;
             setLoading(true);
             try {
                 let res;
@@ -31,11 +241,17 @@ const InterviewReport: React.FC<Props> = ({ sessionId, reportId }) => {
 
                 if (res?.success && res.report) {
                     setReport(res.report);
+                    // Update credits in Redux if updated user is returned
+                    if (res.user) {
+                        dispatch(setUser(res.user));
+                    }
                 } else {
+
                     setError(res?.message || 'Failed to load report.');
                 }
-            } catch (err) {
-                setError('An unexpected error occurred.');
+            } catch (err: any) {
+                console.error("REPORT GENERATION ERROR:", err);
+                setError(`An unexpected error occurred: ${err?.message || 'Unknown error'}`);
             } finally {
                 setLoading(false);
             }
@@ -51,22 +267,14 @@ const InterviewReport: React.FC<Props> = ({ sessionId, reportId }) => {
     if (!report) return null;
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white p-6 md:p-12 font-sans relative overflow-hidden">
-            {/* Ambient Background Effects */}
-            <div className="fixed inset-0 pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px] animate-pulse" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[120px] animate-pulse" />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-white/[0.02] opacity-[0.03] mix-blend-overlay" />
-            </div>
-
-            <div className="max-w-7xl mx-auto relative z-10 space-y-8">
-                {/* Header Section */}
-                <motion.header 
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 p-8 rounded-[2rem] bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl"
-                >
-                    <div className="space-y-2">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-12">
+            {/* Header Section */}
+            <motion.header 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 p-10 rounded-[2.5rem] bg-[#0F1322]/80 border border-white/10 backdrop-blur-xl shadow-2xl"
+            >
+                    <div className="space-y-4">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
                                 <Sparkles className="w-5 h-5 text-white" />
@@ -76,17 +284,39 @@ const InterviewReport: React.FC<Props> = ({ sessionId, reportId }) => {
                             </h1>
                         </div>
                         <p className="text-gray-400 font-medium">Comprehensive evaluation of your performance</p>
+                        
+                        {onReset && (
+                            <button 
+                                onClick={onReset}
+                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-lg shadow-blue-600/20 active:scale-95 group"
+                            >
+                                <BarChart3 className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+                                Apply for Another Interview
+                            </button>
+                        )}
                     </div>
 
-                    <div className="flex items-center gap-6 bg-black/40 p-4 rounded-2xl border border-white/5">
-                        <div className="text-center px-4 border-r border-white/10">
+                    <div className="flex flex-col sm:flex-row items-center gap-6 bg-black/40 p-5 rounded-[2rem] border border-white/5">
+                        <div className="text-center px-6 sm:border-r border-white/10">
                             <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">Final Score</p>
                             <p className="text-3xl font-black text-white">{report.finalCredits}%</p>
                         </div>
-                        <div className="text-center px-4">
+                        <div className="text-center px-6">
                             <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">Recommendation</p>
                             <RecommendationBadge recommendation={report.recommendation} />
                         </div>
+                        <button
+                            onClick={handleDownloadPDF}
+                            disabled={downloadingPdf}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-xs font-bold transition-all shadow-lg shadow-purple-600/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {downloadingPdf ? (
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                                <Download className="w-4 h-4" />
+                            )}
+                            {downloadingPdf ? 'Generating...' : 'Download PDF'}
+                        </button>
                     </div>
                 </motion.header>
 
@@ -164,7 +394,6 @@ const InterviewReport: React.FC<Props> = ({ sessionId, reportId }) => {
                     ))}
                 </motion.div>
             </div>
-        </div>
     );
 };
 
@@ -177,8 +406,12 @@ const MetricBar = ({ label, score, color }: { label: string, score: number, colo
             <span>{score}%</span>
         </div>
         <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-            <motion.initial animate={{ width: `${score}%` }} className={`h-full ${color}`} />
-            <div className={`h-full ${color}`} style={{ width: `${score}%` }} />
+            <motion.div 
+                initial={{ width: 0 }} 
+                animate={{ width: `${score}%` }} 
+                transition={{ duration: 1, ease: "easeOut" }} 
+                className={`h-full ${color} rounded-full`} 
+            />
         </div>
     </div>
 );

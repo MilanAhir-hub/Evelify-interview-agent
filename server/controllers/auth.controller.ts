@@ -3,6 +3,8 @@ import User from '../models/user.model.js';
 import generateToken from '../config/token.js';
 
 export const googleAuth = async (req: Request, res: Response): Promise<any> => {
+    console.log("Google Auth Controller Hit:", req.body);
+
     try {
         // 1. Get frontend data
         const { name, email } = req.body;

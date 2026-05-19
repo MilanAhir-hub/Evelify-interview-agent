@@ -2,8 +2,9 @@ import { Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import InterviewPage from "./pages/InterviewPage";
+import History from "./pages/History";
 
-export const server_url = "http://localhost:5000";
+// server_url has been moved to src/config.ts to avoid circular dependencies
 
 const AppRoutes = () => {
     return (
@@ -11,6 +12,7 @@ const AppRoutes = () => {
             <Route path="/" element={<Home />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/interview" element={<InterviewPage />} />
+            <Route path="/history" element={<History />} />
         </Routes>
     )
 }

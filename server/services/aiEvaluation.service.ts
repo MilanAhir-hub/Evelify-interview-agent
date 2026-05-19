@@ -68,16 +68,38 @@ You MUST return ONLY a valid JSON object with the exact following structure. Do 
             throw new Error('Failed to get response from AI');
         }
 
-        // Clean up markdown wrapping if the AI included it by mistake
-        let jsonStr = response;
-        if (jsonStr.startsWith('\`\`\`json')) {
-            jsonStr = jsonStr.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
-        } else if (jsonStr.startsWith('\`\`\`')) {
-            jsonStr = jsonStr.replace(/^\`\`\`\n/, '').replace(/\n\`\`\`$/, '');
+        // Step 1: Strip markdown fences if the model wrapped the JSON
+        let jsonStr = response.trim();
+        if (jsonStr.startsWith('```')) {
+            jsonStr = jsonStr.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
         }
 
-        const parsedData = JSON.parse(jsonStr);
-        return parsedData;
+        // Step 2: Extract the outermost { ... } block
+        const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            jsonStr = jsonMatch[0];
+        }
+
+        try {
+            return JSON.parse(jsonStr);
+        } catch (parseError: any) {
+            console.error("[AI:ERROR] JSON Parse Failed.");
+            console.error("[AI:ERROR] Message:", parseError.message);
+            console.error("[AI:ERROR] Cleaned string (first 100):", jsonStr.substring(0, 100));
+            console.error("[AI:ERROR] Cleaned string (last 100):", jsonStr.substring(jsonStr.length - 100));
+            
+            // Log char codes around error if position is known
+            const posMatch = parseError.message.match(/at position (\d+)/);
+            if (posMatch) {
+                const pos = parseInt(posMatch[1]);
+                const start = Math.max(0, pos - 10);
+                const end = Math.min(jsonStr.length, pos + 10);
+                const snippet = jsonStr.substring(start, end);
+                console.error(`[AI:ERROR] Context around pos ${pos}: "${snippet}"`);
+            }
+
+            throw new Error("AI returned malformed data that could not be parsed.");
+        }
 
     } catch (error: any) {
         console.error("AI Evaluation Service Error:", error.message);
