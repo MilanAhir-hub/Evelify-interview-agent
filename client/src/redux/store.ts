@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './slices/authSlice';
+import aptitudeReducer from './slices/aptitudeSlice';
 
 // dispatch means:- Tell Redux to update state
 // reducer:- this is the function which changing the state
@@ -7,6 +8,7 @@ import authReducer from './slices/authSlice';
 export const store = configureStore({
   reducer: {
     auth: authReducer,
+    aptitude: aptitudeReducer,
   },
 });
 

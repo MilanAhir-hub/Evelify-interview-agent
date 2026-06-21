@@ -136,28 +136,28 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
             initial={{ opacity: 0, scale: 0.9, y: 40 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 40 }}
-            className="relative w-full max-w-4xl bg-[#0F1322] border border-white/10 rounded-[2.5rem] shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] overflow-hidden z-[10000] my-auto"
+            className="relative w-full max-w-4xl dark:bg-[#0B1120] light:bg-white dark:border-white/10 light:border-gray-200 border rounded-[2.5rem] shadow-[0_0_50px_-12px_rgba(0,0,0,0.3)] overflow-hidden z-[10000] my-auto"
           >
             {/* Header */}
-            <div className="p-6 md:p-10 pb-6 text-center border-b border-white/5 relative">
+            <div className="p-6 md:p-10 pb-6 text-center border-b dark:border-white/5 light:border-gray-100 relative">
               <button
                 onClick={onClose}
-                className="absolute top-6 right-6 p-2 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-all hover:rotate-90 active:scale-90"
+                className="absolute top-6 right-6 p-2 dark:text-gray-400 dark:hover:text-white dark:bg-white/5 dark:hover:bg-white/10 light:text-gray-500 light:hover:text-gray-900 light:bg-gray-100 light:hover:bg-gray-200 rounded-full transition-all hover:rotate-90 active:scale-90"
               >
                 <X className="w-5 h-5" />
               </button>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-widest mb-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 dark:text-blue-400 text-[10px] font-bold uppercase tracking-widest mb-4">
                 <Zap className="w-3 h-3 fill-current" />
                 Credits System
               </div>
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-3 tracking-tight">Level Up Your Interviews</h2>
-              <p className="text-gray-400 max-w-lg mx-auto text-sm md:text-base leading-relaxed">
+              <h2 className="text-3xl md:text-4xl font-bold dark:text-white light:text-gray-900 text-white mb-3 tracking-tight">Level Up Your Interviews</h2>
+              <p className="dark:text-gray-400 light:text-gray-600 text-gray-400 max-w-lg mx-auto text-sm md:text-base leading-relaxed">
                 Each AI interview session costs 10 credits. Purchase more credits to continue practicing and landing your dream job.
               </p>
             </div>
 
             {errorMsg && (
-              <div className="bg-red-500/10 border-b border-red-500/20 px-8 py-3 text-red-400 text-sm text-center font-medium">
+              <div className="dark:bg-red-500/10 light:bg-red-50 dark:border-red-500/20 light:border-red-100 border-b px-8 py-3 text-red-500 dark:text-red-400 text-sm text-center font-medium">
                 {errorMsg}
               </div>
             )}
@@ -169,7 +169,11 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                 return (
                   <div
                     key={tier.id}
-                    className={`relative rounded-[2rem] p-8 border transition-all duration-500 hover:translate-y-[-4px] ${tier.popular ? 'bg-gradient-to-b from-blue-600/10 via-blue-600/5 to-transparent border-blue-500/30 shadow-[0_20px_50px_rgba(59,130,246,0.1)]' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.04]'}`}
+                    className={`relative rounded-[2rem] p-8 border transition-all duration-500 hover:translate-y-[-4px] ${
+                      tier.popular 
+                        ? 'bg-gradient-to-b dark:from-blue-600/10 light:from-blue-500/5 dark:via-blue-600/5 light:via-blue-500/2 dark:to-transparent light:to-transparent border-blue-500/30 dark:border-blue-500/30 light:border-blue-300 shadow-[0_20px_50px_rgba(59,130,246,0.1)]' 
+                        : 'dark:bg-white/[0.02] light:bg-gray-50/50 dark:border-white/5 light:border-gray-200 hover:dark:bg-white/[0.04] hover:light:bg-gray-100/50'
+                    }`}
                   >
                     {tier.popular && (
                       <div className="absolute -top-3.5 inset-x-0 flex justify-center">
@@ -181,27 +185,27 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
 
                     <div className="flex items-center justify-between mb-6 mt-2">
                       <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-2xl ${tier.popular ? 'bg-blue-500/20 text-blue-400' : 'bg-white/10 text-gray-300'}`}>
+                        <div className={`p-3 rounded-2xl ${tier.popular ? 'bg-blue-500/20 text-blue-500 dark:text-blue-400' : 'dark:bg-white/10 light:bg-gray-100 dark:text-gray-300 light:text-gray-600'}`}>
                           <Icon className="w-6 h-6" />
                         </div>
-                        <h3 className="text-2xl font-bold text-white tracking-tight">{tier.name}</h3>
+                        <h3 className="text-2xl font-bold dark:text-white light:text-gray-900 text-white tracking-tight">{tier.name}</h3>
                       </div>
                       <div className="text-right">
-                        <span className="text-3xl font-black text-white">{tier.price}</span>
+                        <span className="text-3xl font-black dark:text-white light:text-gray-900 text-white">{tier.price}</span>
                       </div>
                     </div>
 
-                    <div className="flex items-baseline gap-2 mb-8 pb-8 border-b border-white/5">
+                    <div className="flex items-baseline gap-2 mb-8 pb-8 border-b dark:border-white/5 light:border-gray-100">
                       <span className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">
                         {tier.credits}
                       </span>
-                      <span className="text-gray-500 font-bold uppercase tracking-widest text-xs">Credits</span>
+                      <span className="dark:text-gray-500 light:text-gray-400 font-bold uppercase tracking-widest text-xs">Credits</span>
                     </div>
 
                     <ul className="space-y-4 mb-10">
                       {tier.features.map((feature, i) => (
-                        <li key={i} className="flex items-center gap-3.5 text-gray-400">
-                          <CheckCircle2 className={`w-5 h-5 flex-shrink-0 ${tier.popular ? 'text-blue-400' : 'text-gray-600'}`} />
+                        <li key={i} className="flex items-center gap-3.5 dark:text-gray-400 light:text-gray-600">
+                          <CheckCircle2 className={`w-5 h-5 flex-shrink-0 ${tier.popular ? 'text-blue-500 dark:text-blue-400' : 'dark:text-gray-600 light:text-gray-300'}`} />
                           <span className="text-sm font-medium">{feature}</span>
                         </li>
                       ))}
@@ -210,10 +214,11 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                     <button
                       onClick={() => handlePayment(tier.id)}
                       disabled={loadingTier !== null}
-                      className={`w-full py-4 px-6 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex justify-center items-center gap-3 ${tier.popular
+                      className={`w-full py-4 px-6 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex justify-center items-center gap-3 ${
+                        tier.popular
                           ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_10px_25px_-5px_rgba(59,130,246,0.4)]'
-                          : 'bg-white/10 hover:bg-white/15 text-white'
-                        } ${loadingTier === tier.id ? 'opacity-80 cursor-wait' : 'hover:scale-[1.02] active:scale-95'}`}
+                          : 'dark:bg-white/10 light:bg-gray-900 dark:hover:bg-white/15 light:hover:bg-gray-800 text-white dark:text-white'
+                      } ${loadingTier === tier.id ? 'opacity-80 cursor-wait' : 'hover:scale-[1.02] active:scale-95'}`}
                     >
                       {loadingTier === tier.id ? (
                         <>

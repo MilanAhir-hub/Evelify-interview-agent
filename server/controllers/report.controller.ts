@@ -58,6 +58,8 @@ export const generateInterviewReport = async (req: Request, res: Response): Prom
             evaluationData = await evaluateInterviewAnswers(session);
         } catch (aiErr: any) {
             console.error("[REPORT] AI evaluation failed:", aiErr.message);
+            // Refund the 10 credits deducted at session start
+            await User.findByIdAndUpdate(userId, { $inc: { credits: 10 } });
             res.status(500).json({ success: false, message: `AI evaluation failed: ${aiErr.message}` });
             return;
         }
@@ -65,6 +67,8 @@ export const generateInterviewReport = async (req: Request, res: Response): Prom
         // --- Guard: validate AI response structure ---
         if (!evaluationData?.evaluations || !evaluationData?.overall) {
             console.error("[REPORT] AI returned invalid structure:", JSON.stringify(evaluationData));
+            // Refund the 10 credits deducted at session start
+            await User.findByIdAndUpdate(userId, { $inc: { credits: 10 } });
             res.status(500).json({ success: false, message: "AI returned invalid data structure" });
             return;
         }
@@ -94,26 +98,30 @@ export const generateInterviewReport = async (req: Request, res: Response): Prom
                 confidence: overall.confidenceScore ?? 0,
                 problemSolving: overall.problemSolvingScore ?? 0,
                 behavioral: overall.behavioralScore ?? 0,
-            }
+            },
+            improvementPlan: evaluationData.improvementPlan ?? []
         };
 
-        const report = await InterviewReport.findOneAndUpdate(
-            { interviewId: session._id },
-            { $set: reportData },
-            { upsert: true, new: true, setDefaultsOnInsert: true }
-        );
-
-        // Deduct 10 credits here (Interview Completed)
-        const user = await User.findById(userId);
-        if (user) {
-            user.credits = Math.max(0, user.credits - 10);
-            await user.save();
-            console.log(`[CREDITS] Deducted 10 credits from user ${userId} for completing interview. Remaining: ${user.credits}`);
+        let report;
+        try {
+            report = await InterviewReport.findOneAndUpdate(
+                { interviewId: session._id },
+                { $set: reportData },
+                { upsert: true, new: true, setDefaultsOnInsert: true }
+            );
+        } catch (dbErr: any) {
+            console.error("[REPORT] Database upsert failed:", dbErr.message);
+            // Refund the 10 credits deducted at session start
+            await User.findByIdAndUpdate(userId, { $inc: { credits: 10 } });
+            res.status(500).json({ success: false, message: `Failed to save report: ${dbErr.message}` });
+            return;
         }
 
         console.log(`[REPORT] Report saved successfully. reportId=${report._id}`);
+        
+        // Fetch user info to send updated credits back to frontend
+        const user = await User.findById(userId);
         res.status(200).json({ success: true, report, user });
-
 
     } catch (error: any) {
         console.error("[REPORT:FATAL]", error.stack || error.message);

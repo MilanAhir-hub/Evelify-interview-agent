@@ -31,16 +31,16 @@ const Features = () => {
   ];
 
   return (
-    <section className="py-32 relative overflow-hidden bg-[#050505]">
+    <section className="py-16 sm:py-20 md:py-32 relative overflow-hidden dark:bg-[#050505] light:bg-gray-50">
       <motion.div 
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
-        className="absolute top-1/2 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/5 to-transparent -z-10"
+        className="absolute top-1/2 left-0 w-full h-px bg-gradient-to-r from-transparent dark:via-white/5 light:via-gray-200 to-transparent -z-10"
       />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 sm:mb-12 md:mb-16 gap-4 sm:gap-6">
           <motion.div 
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -48,18 +48,18 @@ const Features = () => {
             transition={{ duration: 0.6 }}
             className="max-w-xl"
           >
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold dark:text-white light:text-gray-900 mb-4 sm:mb-6 tracking-tight">
               Powerful Features for <br />
               <motion.span 
                 initial={{ opacity: 0.5 }}
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
-                className="text-gray-500 italic"
+                className="dark:text-gray-500 light:text-gray-400 italic"
               >
                 Interview Success
               </motion.span>
             </h2>
-            <p className="text-gray-400 text-lg font-light leading-relaxed">
+            <p className="dark:text-gray-400 light:text-gray-600 text-sm sm:text-base md:text-lg font-light leading-relaxed">
               Everything you need to transform your interview performance, backed by advanced artificial intelligence.
             </p>
           </motion.div>
@@ -72,7 +72,7 @@ const Features = () => {
           >
             <motion.div 
               whileHover={{ scale: 1.05 }}
-              className="px-6 py-2 rounded-full border border-white/10 bg-white/5 text-sm text-gray-400 font-medium cursor-default"
+              className="px-6 py-2 rounded-full border dark:border-white/10 light:border-gray-200 dark:bg-white/5 light:bg-gray-100 text-sm dark:text-gray-400 light:text-gray-600 font-medium cursor-default"
             >
               Explore All Tools
             </motion.div>

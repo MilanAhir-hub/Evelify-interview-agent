@@ -232,7 +232,7 @@ const InterviewReport: React.FC<Props> = ({ sessionId, reportId, onReset }) => {
             hasFetched.current = true;
             setLoading(true);
             try {
-                let res;
+                let res: any;
                 if (reportId) {
                     res = await reportApi.getReport(reportId);
                 } else if (sessionId) {
@@ -372,6 +372,43 @@ const InterviewReport: React.FC<Props> = ({ sessionId, reportId, onReset }) => {
                         </div>
                     </motion.div>
                 </div>
+
+                {/* Personalized Study Roadmap */}
+                {report.improvementPlan && report.improvementPlan.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.35 }}
+                        className="p-8 rounded-[2rem] bg-[#0F1322]/80 border border-white/10 shadow-lg space-y-6"
+                    >
+                        <h3 className="text-lg font-bold flex items-center gap-2 text-indigo-400">
+                            <Brain className="w-6 h-6" /> Personalized Study Plan & Roadmap
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {report.improvementPlan.map((plan, i) => (
+                                <div key={i} className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                                    <h4 className="text-base font-bold text-white flex items-center gap-2">
+                                        <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+                                        {plan.topic}
+                                    </h4>
+                                    <p className="text-sm text-gray-400 leading-relaxed font-light">{plan.description}</p>
+                                    {plan.resources && plan.resources.length > 0 && (
+                                        <div className="pt-2">
+                                            <h5 className="text-[10px] uppercase font-bold text-gray-500 tracking-wider mb-2">Recommended Resources:</h5>
+                                            <div className="flex flex-wrap gap-2">
+                                                {plan.resources.map((resItem, resIdx) => (
+                                                    <span key={resIdx} className="px-2.5 py-1 rounded-md bg-indigo-500/10 text-[10px] font-medium text-indigo-300 border border-indigo-500/20">
+                                                        {resItem}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
 
                 {/* Question Breakdown */}
                 <motion.div 

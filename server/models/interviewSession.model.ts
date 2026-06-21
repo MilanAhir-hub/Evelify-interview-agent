@@ -55,4 +55,6 @@ const InterviewSessionSchema: Schema = new Schema(
   { timestamps: true }
 );
 
+InterviewSessionSchema.index({ userId: 1, status: 1 });
+
 export default mongoose.model<IInterviewSession>('InterviewSession', InterviewSessionSchema);

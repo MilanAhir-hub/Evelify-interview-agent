@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import axios from "axios";
-import AppRoutes from "./AppRoutes";
+import { Outlet } from "react-router-dom";
 import { server_url } from "./config";
 import { setUser } from "./redux/slices/authSlice";
 
@@ -26,7 +26,7 @@ const App = () => {
 
   return (
     <>
-      <AppRoutes />
+      <Outlet />
     </>
   );
 };

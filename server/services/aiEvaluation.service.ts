@@ -1,5 +1,38 @@
-import { askAi, Message } from './openRouter.service.js';
+import { askAiJson, Message } from './openRouter.service.js';
 import { IInterviewSession } from '../models/interviewSession.model.js';
+import { z } from 'zod';
+
+const evaluationResponseSchema = z.object({
+    evaluations: z.array(
+        z.object({
+            question: z.string(),
+            userAnswer: z.string(),
+            aiIdealAnswer: z.string(),
+            score: z.number().min(0).max(10),
+            feedback: z.string(),
+            improvement: z.string(),
+        })
+    ),
+    overall: z.object({
+        communicationScore: z.number().min(0).max(100),
+        technicalScore: z.number().min(0).max(100),
+        confidenceScore: z.number().min(0).max(100),
+        problemSolvingScore: z.number().min(0).max(100),
+        behavioralScore: z.number().min(0).max(100),
+        finalCredits: z.number().min(0).max(100),
+        averageScore: z.number().min(0).max(10),
+        recommendation: z.enum(['Strong Hire', 'Hire', 'Average', 'Needs Improvement']),
+        overallStrengths: z.array(z.string()),
+        overallWeaknesses: z.array(z.string()),
+    }),
+    improvementPlan: z.array(
+        z.object({
+            topic: z.string(),
+            resources: z.array(z.string()),
+            description: z.string()
+        })
+    )
+});
 
 export const evaluateInterviewAnswers = async (session: IInterviewSession) => {
     try {
@@ -21,7 +54,7 @@ Interview Transcript:
 ${questionsAndAnswers}
 
 INSTRUCTIONS:
-Provide a comprehensive evaluation of the candidate. For EACH question, evaluate the candidate's answer and generate the IDEAL answer they should have given. Then provide overall analytics.
+Provide a comprehensive evaluation of the candidate. For EACH question, evaluate the candidate's answer and generate the IDEAL answer they should have given. Then provide overall analytics and a detailed personalized study plan/roadmap.
 
 You MUST return ONLY a valid JSON object with the exact following structure. Do not wrap it in markdown block quotes (e.g., \`\`\`json). Return raw JSON only.
 
@@ -47,14 +80,21 @@ You MUST return ONLY a valid JSON object with the exact following structure. Do 
     "recommendation": "<Must be one of: 'Strong Hire', 'Hire', 'Average', 'Needs Improvement'>",
     "overallStrengths": ["Strength 1", "Strength 2"],
     "overallWeaknesses": ["Weakness 1", "Weakness 2"]
-  }
+  },
+  "improvementPlan": [
+    {
+      "topic": "Suggested study topic name based on weaknesses",
+      "resources": ["Book name, documentation link, or online course resource 1", "Resource 2"],
+      "description": "Specific study plan, suggestions, and practice ideas"
+    }
+  ]
 }
 `;
 
         const messages: Message[] = [
             {
                 role: 'system',
-                content: 'You are an expert AI interview evaluator. You only output strictly valid JSON.',
+                content: 'You are an expert AI interview evaluator. You only output strictly valid JSON matching the requested schema.',
             },
             {
                 role: 'user',
@@ -62,44 +102,8 @@ You MUST return ONLY a valid JSON object with the exact following structure. Do 
             },
         ];
 
-        const response = await askAi(messages);
-
-        if (!response) {
-            throw new Error('Failed to get response from AI');
-        }
-
-        // Step 1: Strip markdown fences if the model wrapped the JSON
-        let jsonStr = response.trim();
-        if (jsonStr.startsWith('```')) {
-            jsonStr = jsonStr.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
-        }
-
-        // Step 2: Extract the outermost { ... } block
-        const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            jsonStr = jsonMatch[0];
-        }
-
-        try {
-            return JSON.parse(jsonStr);
-        } catch (parseError: any) {
-            console.error("[AI:ERROR] JSON Parse Failed.");
-            console.error("[AI:ERROR] Message:", parseError.message);
-            console.error("[AI:ERROR] Cleaned string (first 100):", jsonStr.substring(0, 100));
-            console.error("[AI:ERROR] Cleaned string (last 100):", jsonStr.substring(jsonStr.length - 100));
-            
-            // Log char codes around error if position is known
-            const posMatch = parseError.message.match(/at position (\d+)/);
-            if (posMatch) {
-                const pos = parseInt(posMatch[1]);
-                const start = Math.max(0, pos - 10);
-                const end = Math.min(jsonStr.length, pos + 10);
-                const snippet = jsonStr.substring(start, end);
-                console.error(`[AI:ERROR] Context around pos ${pos}: "${snippet}"`);
-            }
-
-            throw new Error("AI returned malformed data that could not be parsed.");
-        }
+        const validatedResponse = await askAiJson(messages, evaluationResponseSchema);
+        return validatedResponse;
 
     } catch (error: any) {
         console.error("AI Evaluation Service Error:", error.message);

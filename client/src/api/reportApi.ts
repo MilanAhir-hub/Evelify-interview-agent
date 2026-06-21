@@ -26,6 +26,11 @@ export interface InterviewReportData {
         problemSolving: number;
         behavioral: number;
     };
+    improvementPlan?: {
+        topic: string;
+        resources: string[];
+        description: string;
+    }[];
     createdAt: string;
 }
 

@@ -18,6 +18,7 @@ import {
     Waves,
     Zap
 } from 'lucide-react';
+import { useBlocker, useNavigate } from 'react-router-dom';
 import { interviewApi } from '../api/interviewApi';
 
 interface InterviewProps {
@@ -33,8 +34,11 @@ declare global {
 }
 
 const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
+    const navigate = useNavigate();
     const [session, setSession] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [initError, setInitError] = useState<string | null>(null);
+    const [isSubmittingFinal, setIsSubmittingFinal] = useState(false);
     const [step, setStep] = useState(1);
     const [isRecording, setIsRecording] = useState(false);
     const [answerMode, setAnswerMode] = useState<'voice' | 'text'>('voice');
@@ -44,7 +48,14 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
     const [isLowTime, setIsLowTime] = useState(false);
     const [warningMsg, setWarningMsg] = useState('');
     const [interimTranscript, setInterimTranscript] = useState('');
-    const [currentTone, setCurrentTone] = useState('Neutral');
+    const [error, setError] = useState<string | null>(null);
+    const [loadingStep, setLoadingStep] = useState<string>('');
+
+    const currentFullText = (textAnswer + (interimTranscript ? (textAnswer ? ' ' : '') + interimTranscript : '')).trim();
+    const wordCount = currentFullText ? currentFullText.split(/\s+/).filter(Boolean).length : 0;
+    const responseLength = currentFullText.length;
+    const responseTime = Math.max(0, 180 - timer);
+    const wpm = responseTime > 0 ? Math.round((wordCount / responseTime) * 60) : 0;
 
     const recognitionRef = useRef<any>(null);
     const shouldRecordRef = useRef(false);
@@ -52,22 +63,53 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
     const retryCountRef = useRef(0);
     const MAX_RETRIES = 5;
 
-    useEffect(() => {
-        const fetchSession = async () => {
-            try {
-                if (!InterviewData?.sessionId) return;
-                const data = await interviewApi.getSession(InterviewData.sessionId);
-                if (data.success) {
-                    setSession(data.session);
-                    setStep(data.session.currentQuestionIndex + 1);
-                    setLoading(false);
-                }
-            } catch (err) {
-                console.error("Failed to load session", err);
+    const fetchSession = async () => {
+        try {
+            setInitError(null);
+            setLoading(true);
+            if (!InterviewData?.sessionId) {
+                setInitError("Session ID is missing.");
+                setLoading(false);
+                return;
             }
-        };
+            const data = await interviewApi.getSession(InterviewData.sessionId);
+            if (data.success) {
+                setSession(data.session);
+                setStep(data.session.currentQuestionIndex + 1);
+                setLoading(false);
+            } else {
+                setInitError(data.message || "Failed to load session.");
+                setLoading(false);
+            }
+        } catch (err: any) {
+            console.error("Failed to load session", err);
+            setInitError(err.response?.data?.message || err.message || "Failed to load session. Please check your connection.");
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchSession();
     }, [InterviewData?.sessionId]);
+
+    const blocker = useBlocker(
+        () => {
+            return !isSubmittingFinal;
+        }
+    );
+
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (!isSubmittingFinal) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [isSubmittingFinal]);
 
     // --- Speech Recognition: fresh instance per recording session ---
     const startRecording = () => {
@@ -113,12 +155,6 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                 setTextAnswer(prev => prev + (prev ? ' ' : '') + finalTranscript);
             }
             setInterimTranscript(interimText);
-
-            // Tone Analysis
-            if (interimText || finalTranscript) {
-                const tones = ['Confident', 'Professional', 'Engaged', 'Thoughtful', 'Clear'];
-                setCurrentTone(tones[Math.floor(Math.random() * tones.length)]);
-            }
         };
 
         recognition.onerror = (event: any) => {
@@ -214,7 +250,6 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
             setIsLowTime(false);
             setTextAnswer('');
             setInterimTranscript('');
-            setCurrentTone('Neutral');
             setWarningMsg('');
         }
     }, [step, session]);
@@ -252,10 +287,12 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
         }
 
         if (isRecording) {
-            toggleRecording();
+            stopRecording();
         }
 
         setAiStatus('analyzing');
+        setLoadingStep('Evaluating answer & generating next question...');
+        setError(null);
         window.speechSynthesis.cancel();
 
         try {
@@ -264,13 +301,22 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
 
             if (res.success) {
                 if (res.status === 'completed') {
+                    setLoadingStep('Generating final report...');
+                    setIsSubmittingFinal(true);
                     onFinish({ sessionId: session._id });
                 } else {
+                    setSession(res.session);
                     setStep(res.currentQuestionIndex + 1);
+                    setAiStatus('speaking');
                 }
+            } else {
+                setError(res.message || "Failed to submit answer. Please try again.");
+                setAiStatus('listening');
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to submit answer", err);
+            setError(err.response?.data?.message || err.message || "Failed to submit answer. Please check your connection.");
+            setAiStatus('listening');
         }
     };
 
@@ -281,6 +327,51 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
     };
 
     if (loading || !session) {
+        if (initError) {
+            return (
+                <div className="min-h-screen bg-gradient-to-b from-[#0B1120] to-[#070A14] relative overflow-hidden flex flex-col items-center justify-center text-white p-6 text-center">
+                    <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg_width=%2260%22_height=%2260%22_viewBox=%220_0_60_60%22_xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg_fill=%22none%22_fill-rule=%22evenodd%22%3E%3Cg_fill=%22%233B82F6%22_fill-opacity=%220.03%22%3E%3Cpath_d=%22M36_34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6_34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6_4V0H4v4H0v2h4v4h2V6h4V4H6z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20 pointer-events-none"></div>
+                    
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-red-600/10 rounded-full blur-[100px] -z-10"
+                    />
+
+                    <motion.div 
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                        className="mb-8"
+                    >
+                        <div className="w-20 h-20 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center shadow-lg">
+                            <AlertCircle className="w-10 h-10 text-red-500" />
+                        </div>
+                    </motion.div>
+
+                    <h2 className="text-3xl font-bold mb-4 text-red-200">Failed to Load Interview Session</h2>
+                    <p className="text-gray-400 text-base max-w-md mx-auto font-light mb-8">
+                        {initError}
+                    </p>
+
+                    <div className="flex gap-4">
+                        <button
+                            onClick={() => window.location.href = '/'}
+                            className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 font-semibold hover:bg-white/10 transition-all"
+                        >
+                            Return Home
+                        </button>
+                        <button
+                            onClick={fetchSession}
+                            className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold transition-all shadow-lg shadow-blue-600/20 active:scale-95"
+                        >
+                            Retry Loading
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <div className="min-h-screen bg-gradient-to-b from-[#0B1120] to-[#070A14] relative overflow-hidden flex flex-col items-center justify-center text-white p-6 text-center">
                 <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg_width=%2260%22_height=%2260%22_viewBox=%220_0_60_60%22_xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg_fill=%22none%22_fill-rule=%22evenodd%22%3E%3Cg_fill=%22%233B82F6%22_fill-opacity=%220.03%22%3E%3Cpath_d=%22M36_34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6_34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6_4V0H4v4H0v2h4v4h2V6h4V4H6z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20 pointer-events-none"></div>
@@ -449,6 +540,7 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                         </motion.div>
 
                         <motion.button 
+                            onClick={() => navigate('/')}
                             whileHover={{ scale: 1.05, backgroundColor: "rgba(239, 68, 68, 0.1)", borderColor: "rgba(239, 68, 68, 0.3)" }}
                             whileTap={{ scale: 0.95 }}
                             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-semibold transition-all group"
@@ -460,7 +552,7 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                 </div>
             </motion.div>
 
-            <main className="max-w-7xl mx-auto px-6 py-10 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 {/* Left Column: AI Interface & Stats */}
                 <div className="lg:col-span-4 space-y-5">
                     {/* AI Interviewer Avatar Card */}
@@ -468,7 +560,7 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="relative p-8 rounded-3xl bg-gradient-to-b from-[#0F1322] to-[#0a0d18]/80 backdrop-blur-sm border border-white/10 overflow-hidden"
+                        className="relative p-5 sm:p-8 rounded-2xl sm:rounded-3xl bg-gradient-to-b from-[#0F1322] to-[#0a0d18]/80 backdrop-blur-sm border border-white/10 overflow-hidden"
                     >
                         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-500/10 via-transparent to-purple-500/10 pointer-events-none" />
                         <motion.div 
@@ -491,7 +583,7 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                                             : "0 0 20px rgba(59, 130, 246, 0.2)"
                                     }}
                                     transition={{ duration: 2, repeat: Infinity }}
-                                    className="w-32 h-32 rounded-full bg-gradient-to-tr from-blue-600/30 to-indigo-600/30 border border-white/10 flex items-center justify-center p-1"
+                                    className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-tr from-blue-600/30 to-indigo-600/30 border border-white/10 flex items-center justify-center p-1"
                                 >
                                     <div className={`w-full h-full rounded-full bg-[#070A14] flex items-center justify-center relative overflow-hidden transition-all duration-500 ${aiStatus === 'speaking' ? 'ring-4 ring-blue-500/40' : 'ring-1 ring-white/10'}`}>
                                         <motion.div
@@ -501,7 +593,7 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                                             }}
                                             transition={{ duration: 2, repeat: Infinity }}
                                         >
-                                            <Sparkles className={`w-12 h-12 transition-all duration-700 ${aiStatus === 'speaking' ? 'text-blue-400 opacity-100' : 'text-blue-500/50 opacity-60'}`} />
+                                            <Sparkles className={`w-8 h-8 sm:w-12 sm:h-12 transition-all duration-700 ${aiStatus === 'speaking' ? 'text-blue-400 opacity-100' : 'text-blue-500/50 opacity-60'}`} />
                                         </motion.div>
 
                                         {aiStatus === 'speaking' && (
@@ -648,7 +740,7 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5 }}
-                        className="p-8 rounded-[2.5rem] bg-gradient-to-b from-[#0F1322] to-[#0a0d18]/80 backdrop-blur-sm border border-white/10 shadow-2xl relative overflow-hidden"
+                        className="p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] bg-gradient-to-b from-[#0F1322] to-[#0a0d18]/80 backdrop-blur-sm border border-white/10 shadow-2xl relative overflow-hidden"
                     >
                         <div className="absolute top-0 right-0 p-12 opacity-[0.02] pointer-events-none">
                             <MessageSquare className="w-48 h-48" />
@@ -687,7 +779,7 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                                         borderColor: "rgba(239, 68, 68, 0.4)",
                                         boxShadow: "0 0 25px rgba(239, 68, 68, 0.2)"
                                     } : {}}
-                                    className={`flex items-center gap-3 px-5 py-3 rounded-2xl border transition-all duration-300 ${isLowTime ? 'border-red-500/40 text-red-300' : 'bg-white/5 border-white/10 text-gray-300'}`}
+                                    className={`flex items-center gap-3 px-4 py-2 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl border transition-all duration-300 ${isLowTime ? 'border-red-500/40 text-red-300' : 'bg-white/5 border-white/10 text-gray-300'}`}
                                 >
                                     <motion.div
                                         animate={isLowTime ? { scale: [1, 1.2, 1] } : {}}
@@ -695,7 +787,7 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                                     >
                                         <TimerIcon className={`w-4 h-4 ${isLowTime ? 'text-red-400' : 'text-gray-400'}`} />
                                     </motion.div>
-                                    <span className={`text-2xl font-mono font-bold tabular-nums tracking-wider ${isLowTime ? 'text-red-400' : 'text-white'}`}>
+                                    <span className={`text-xl sm:text-2xl font-mono font-bold tabular-nums tracking-wider ${isLowTime ? 'text-red-400' : 'text-white'}`}>
                                         {formatTime(timer)}
                                     </span>
                                 </motion.div>
@@ -706,7 +798,7 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0 mt-1">
                                         <Sparkles className="w-4 h-4 text-blue-400" />
                                     </div>
-                                    <h3 className="text-2xl md:text-3xl font-bold leading-relaxed text-white tracking-tight">
+                                    <h3 className="text-xl sm:text-2xl md:text-3xl font-bold leading-relaxed text-white tracking-tight">
                                         <TypingEffect text={currentQuestion.text} />
                                     </h3>
                                 </div>
@@ -779,9 +871,34 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                         </motion.div>
 
                         {/* Input Box */}
-                        <div className="relative min-h-[340px]">
-                            <AnimatePresence mode="wait">
-                                {answerMode === 'voice' ? (
+                        <div className="relative min-h-[260px] sm:min-h-[340px]">
+                            {error ? (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="absolute inset-0 flex flex-col items-center justify-center p-8 rounded-[2.5rem] bg-gradient-to-b from-[#0F1322] to-[#0a0d18]/80 border border-red-500/20 text-center space-y-5 shadow-2xl z-20"
+                                >
+                                    <AlertCircle className="w-16 h-16 text-red-500 animate-pulse" />
+                                    <h3 className="text-xl font-bold text-red-200">System Connection Issue</h3>
+                                    <p className="text-gray-400 max-w-md mx-auto text-sm">{error}</p>
+                                    <div className="flex gap-4 flex-wrap justify-center">
+                                        <button
+                                            onClick={() => setError(null)}
+                                            className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 font-semibold hover:bg-white/10 transition-all active:scale-95 text-sm"
+                                        >
+                                            Edit Response
+                                        </button>
+                                        <button
+                                            onClick={handleSubmitAnswer}
+                                            className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold transition-all shadow-lg active:scale-95 text-sm"
+                                        >
+                                            Retry Submission
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            ) : (
+                                <AnimatePresence mode="wait">
+                                    {answerMode === 'voice' ? (
                                     <motion.div
                                         key="voice"
                                         initial={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -805,20 +922,20 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                                                 onClick={toggleRecording}
                                                 whileHover={{ scale: 1.05 }}
                                                 whileTap={{ scale: 0.95 }}
-                                                className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-500 relative z-10 border-4 shadow-2xl ${isRecording ? 'bg-red-500 border-red-400 shadow-red-500/30' : 'bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 border-white/20'}`}
+                                                className={`w-24 h-24 sm:w-32 sm:h-32 rounded-full flex items-center justify-center transition-all duration-500 relative z-10 border-4 shadow-2xl ${isRecording ? 'bg-red-500 border-red-400 shadow-red-500/30' : 'bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 border-white/20'}`}
                                             >
                                                 {isRecording ? (
                                                     <motion.div
                                                         animate={{ scale: [1, 1.1, 1] }}
                                                         transition={{ duration: 1, repeat: Infinity }}
                                                     >
-                                                        <StopCircle className="w-14 h-14" />
+                                                        <StopCircle className="w-10 h-10 sm:w-14 sm:h-14" />
                                                     </motion.div>
                                                 ) : (
                                                     <motion.div
                                                         whileHover={{ scale: 1.1 }}
                                                     >
-                                                        <Mic className="w-14 h-14" />
+                                                        <Mic className="w-10 h-10 sm:w-14 sm:h-14" />
                                                     </motion.div>
                                                 )}
                                             </motion.button>
@@ -838,14 +955,20 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                                                     animate={{ opacity: 1, y: 0 }}
                                                     className="flex flex-col items-center gap-4"
                                                 >
-                                                    <motion.div 
-                                                        animate={{ scale: [1, 1.1, 1] }}
-                                                        transition={{ duration: 2, repeat: Infinity }}
-                                                        className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest text-indigo-300 bg-indigo-500/15 px-5 py-2 rounded-full mx-auto border border-indigo-500/30"
-                                                    >
-                                                        <Waves className="w-4 h-4" />
-                                                        <span>Tone: {currentTone}</span>
-                                                    </motion.div>
+                                                    <div className="flex flex-wrap justify-center gap-3">
+                                                        <div className="px-4 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs font-bold text-blue-300">
+                                                            Words: {wordCount}
+                                                        </div>
+                                                        <div className="px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs font-bold text-indigo-300">
+                                                            WPM: {wpm}
+                                                        </div>
+                                                        <div className="px-4 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs font-bold text-purple-300">
+                                                            Length: {responseLength}
+                                                        </div>
+                                                        <div className="px-4 py-2 rounded-xl bg-green-500/10 border border-green-500/20 text-xs font-bold text-green-300">
+                                                            Time: {responseTime}s
+                                                        </div>
+                                                    </div>
                                                     
                                                     <div className="flex items-end gap-1.5 h-10 px-6 py-2 bg-white/[0.03] rounded-full border border-white/5">
                                                         {[...Array(18)].map((_, i) => (
@@ -899,11 +1022,13 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                                         <motion.div 
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
-                                            className="pt-5 flex items-center justify-between border-t border-white/10"
+                                            className="pt-5 flex flex-wrap items-center justify-between gap-4 border-t border-white/10"
                                         >
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[11px] font-mono font-bold text-gray-500 uppercase tracking-widest">Words:</span>
-                                                <span className="text-sm font-semibold text-blue-400">{textAnswer.split(/\s+/).filter(w => w).length}</span>
+                                            <div className="flex flex-wrap gap-4 text-xs font-semibold text-gray-400">
+                                                <span>Words: <span className="text-blue-400">{wordCount}</span></span>
+                                                <span>WPM: <span className="text-indigo-400">{wpm}</span></span>
+                                                <span>Length: <span className="text-purple-400">{responseLength}</span></span>
+                                                <span>Time: <span className="text-green-400">{responseTime}s</span></span>
                                             </div>
                                             <motion.div 
                                                 whileHover={{ scale: 1.05 }}
@@ -915,6 +1040,7 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                                     </motion.div>
                                 )}
                             </AnimatePresence>
+                            )}
                         </div>
 
                         {warningMsg && (
@@ -965,8 +1091,8 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                                     className="flex items-center gap-3"
                                 >
-                                    <Loader2 className="w-5 h-5" />
-                                    <span>Processing Answer...</span>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    <span>{loadingStep || "Processing Answer..."}</span>
                                 </motion.div>
                             ) : (
                                 <>
@@ -983,6 +1109,39 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                     </motion.div>
                 </div>
             </main>
+            {blocker.state === 'blocked' && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-gradient-to-b from-[#0F1322] to-[#0a0d18] border border-white/10 p-6 rounded-3xl max-w-md w-full shadow-2xl text-center space-y-6"
+                    >
+                        <div className="w-16 h-16 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center mx-auto shadow-lg">
+                            <AlertCircle className="w-10 h-10 text-yellow-500 animate-pulse" />
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="text-xl font-bold text-white">Leave Interview?</h3>
+                            <p className="text-gray-400 text-sm">
+                                Are you sure you want to leave? Your active interview session progress will be lost and cannot be recovered.
+                            </p>
+                        </div>
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => blocker.reset()}
+                                className="flex-1 py-3 px-4 rounded-xl bg-white/5 border border-white/10 text-gray-300 font-semibold hover:bg-white/10 transition-all text-sm"
+                            >
+                                Keep Practicing
+                            </button>
+                            <button
+                                onClick={() => blocker.proceed()}
+                                className="flex-1 py-3 px-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold shadow-lg shadow-red-600/20 transition-all text-sm"
+                            >
+                                Exit Interview
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
         </div>
     );
 };

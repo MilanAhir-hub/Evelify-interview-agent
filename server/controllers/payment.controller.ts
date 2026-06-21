@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
 import User from '../models/user.model.js';
+import Payment from '../models/payment.model.js';
 import Razorpay from 'razorpay';
 
 // Pricing tiers mapping (id -> { amount in paise, credits })
@@ -32,8 +33,17 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
             receipt: `order_rcpt_${Date.now()}`
         };
 
-
         const order = await razorpay.orders.create(options);
+
+        // Persist the payment record
+        await Payment.create({
+            userId,
+            razorpayOrderId: order.id,
+            amount: tier.amount,
+            credits: tier.credits,
+            tierId,
+            status: 'created'
+        });
 
         res.status(200).json({
             success: true,
@@ -66,6 +76,34 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
             return;
         }
 
+        // Replay Protection: Check if this payment ID has already been verified
+        const duplicatePayment = await Payment.findOne({ razorpayPaymentId: razorpay_payment_id });
+        if (duplicatePayment) {
+            res.status(400).json({ success: false, message: 'Payment has already been processed' });
+            return;
+        }
+
+        // Fetch corresponding payment order record
+        const paymentRecord = await Payment.findOne({ razorpayOrderId: razorpay_order_id });
+        if (!paymentRecord) {
+            res.status(404).json({ success: false, message: 'Payment record not found' });
+            return;
+        }
+
+        // Verify Ownership, Amount and Status
+        if (paymentRecord.userId.toString() !== userId) {
+            res.status(403).json({ success: false, message: 'Unauthorized payment order ownership' });
+            return;
+        }
+        if (paymentRecord.amount !== tier.amount) {
+            res.status(400).json({ success: false, message: 'Invalid payment amount match' });
+            return;
+        }
+        if (paymentRecord.status === 'paid') {
+            res.status(400).json({ success: false, message: 'Payment order already marked as paid' });
+            return;
+        }
+
         const secret = process.env.RAZORPAY_KEY_SECRET || 'dummy_secret';
 
         const body = razorpay_order_id + "|" + razorpay_payment_id;
@@ -77,6 +115,12 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
         const isAuthentic = expectedSignature === razorpay_signature;
 
         if (isAuthentic) {
+            // Update payment record status
+            paymentRecord.status = 'paid';
+            paymentRecord.razorpayPaymentId = razorpay_payment_id;
+            paymentRecord.razorpaySignature = razorpay_signature;
+            await paymentRecord.save();
+
             // Update user credits
             const user = await User.findById(userId);
             if (!user) {
@@ -94,6 +138,11 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
                 user
             });
         } else {
+            paymentRecord.status = 'failed';
+            paymentRecord.razorpayPaymentId = razorpay_payment_id;
+            paymentRecord.razorpaySignature = razorpay_signature;
+            await paymentRecord.save();
+
             res.status(400).json({
                 success: false,
                 message: "Invalid payment signature"

@@ -25,6 +25,11 @@ export interface IInterviewReport extends Document {
         problemSolving: number;
         behavioral: number;
     };
+    improvementPlan?: {
+        topic: string;
+        resources: string[];
+        description: string;
+    }[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -59,8 +64,17 @@ const InterviewReportSchema: Schema = new Schema(
             problemSolving: { type: Number, required: true },
             behavioral: { type: Number, required: true },
         },
+        improvementPlan: [
+            {
+                topic: { type: String, required: true },
+                resources: [{ type: String }],
+                description: { type: String, required: true }
+            }
+        ],
     },
     { timestamps: true }
 );
+
+InterviewReportSchema.index({ interviewId: 1, userId: 1 });
 
 export default mongoose.model<IInterviewReport>('InterviewReport', InterviewReportSchema);

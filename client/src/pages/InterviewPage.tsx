@@ -7,7 +7,7 @@ import InterviewReport from "../components/InterviewReport";
 const InterviewPage = () =>{
     
     const [step, setStep] = useState(1);
-    const [InterviewData, setInterviewData] = useState(null);
+    const [InterviewData, setInterviewData] = useState<any>(null);
 
     return(
         <div className="min-h-screen bg-gradient-to-b from-[#0B1120] via-[#0A0F1C] to-[#070A14] text-white selection:bg-blue-500/30 relative">

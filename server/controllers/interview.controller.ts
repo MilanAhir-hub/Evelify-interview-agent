@@ -2,10 +2,16 @@ import { Request, Response } from "express";
 import fs from "fs";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
-import { askAi, Message } from "../services/openRouter.service.js";
+import { askAi, askAiJson, Message } from "../services/openRouter.service.js";
+import { z } from "zod";
 import InterviewSession from "../models/interviewSession.model.js";
 import InterviewReport from "../models/interviewReport.model.js";
 import User from "../models/user.model.js";
+
+const singleQuestionSchema = z.object({
+    text: z.string().min(1, "Question text is required"),
+    type: z.enum(['technical', 'project', 'problem-solving', 'behavioral', 'advanced'])
+});
 
 interface ResumeData {
     role: string;
@@ -133,62 +139,45 @@ export const generateQuestions = async (req: Request, res: Response): Promise<vo
     try {
         const userId = req.id;
 
-        // Check user credits
-        const user = await User.findById(userId);
+        // Atomically check and deduct 10 credits
+        const user = await User.findOneAndUpdate(
+            { _id: userId, credits: { $gte: 10 } },
+            { $inc: { credits: -10 } },
+            { new: true }
+        );
+
         if (!user) {
-            res.status(404).json({ success: false, message: "User not found" });
-            return;
-        }
-        
-        if (user.credits < 10) {
-            res.status(402).json({ success: false, message: "Insufficient credits" });
+            res.status(402).json({ success: false, message: "Insufficient credits or user not found" });
             return;
         }
 
         const { role, experience, projects, skills } = req.body;
 
-
         const messages: Message[] = [
             {
                 role: "system",
                 content: `You are an expert technical interviewer for top tech companies.
-Generate EXACTLY 5 interview questions personalized for a candidate with:
+Generate the FIRST interview question personalized for a candidate with:
 Role: ${role}
 Experience: ${experience}
 Skills: ${skills.join(", ")}
 Projects: ${projects.join(", ")}
 
-The questions MUST vary:
-1. Technical depth
-2. Project-based scenario
-3. Problem-solving/Architecture
-4. Behavioral
-5. Advanced/Specific to their skills
+The question MUST be of type 'technical', focusing on core technical concepts and fundamentals relevant to their skills and experience.
 
 Return ONLY valid JSON in this format:
-[
-  { "text": "Question 1", "type": "technical" },
-  { "text": "Question 2", "type": "project" },
-  { "text": "Question 3", "type": "problem-solving" },
-  { "text": "Question 4", "type": "behavioral" },
-  { "text": "Question 5", "type": "advanced" }
-]`
+{ "text": "Your question here", "type": "technical" }`
             }
         ];
 
-        const response = await askAi(messages);
-
-        let questions;
+        let firstQuestion;
         try {
-            questions = JSON.parse(response || "[]");
-        } catch (e) {
-            console.error("Failed to parse AI response:", response);
-            res.status(500).json({ success: false, message: "AI returned invalid format." });
-            return;
-        }
-
-        if (!Array.isArray(questions) || questions.length !== 5) {
-            res.status(500).json({ success: false, message: "Failed to generate valid questions." });
+            firstQuestion = await askAiJson(messages, singleQuestionSchema);
+        } catch (aiErr: any) {
+            console.error("Failed to generate first question:", aiErr);
+            // Refund the deducted credits
+            await User.findByIdAndUpdate(userId, { $inc: { credits: 10 } });
+            res.status(500).json({ success: false, message: "Failed to generate initial question from AI." });
             return;
         }
 
@@ -198,7 +187,7 @@ Return ONLY valid JSON in this format:
             experience,
             projects,
             skills,
-            questions,
+            questions: [firstQuestion],
             status: 'in_progress',
             currentQuestionIndex: 0
         });
@@ -263,8 +252,60 @@ export const submitAnswer = async (req: Request, res: Response): Promise<void> =
 
         session.currentQuestionIndex += 1;
 
-        if (session.currentQuestionIndex >= session.questions.length) {
+        if (session.currentQuestionIndex >= 5) {
             session.status = 'completed';
+        } else {
+            // Generate next adaptive question N+1
+            const questionTypes = ['technical', 'project', 'problem-solving', 'behavioral', 'advanced'];
+            const nextType = questionTypes[session.currentQuestionIndex];
+
+            const previousQAs = session.questions.map((q, idx) => {
+                const ans = session.answers.find(a => a.questionIndex === idx);
+                return `Question ${idx + 1} (${q.type}): ${q.text}\nCandidate Answer: ${ans ? ans.text : 'No answer provided'}`;
+            }).join("\n\n");
+
+            const systemPrompt = `You are conducting an adaptive technical interview for a candidate.
+Candidate Profile:
+Role: ${session.role}
+Experience: ${session.experience}
+Skills: ${session.skills.join(", ")}
+Projects: ${session.projects.join(", ")}
+
+Interview Transcript so far:
+${previousQAs}
+
+INSTRUCTIONS:
+Generate the NEXT interview question (Question ${session.currentQuestionIndex + 1} of 5) of type '${nextType}'.
+This question should be adaptive: either follow up on the candidate's last answer to drill deeper, correct a misconception, or move to a new topic relevant to their background.
+
+Return ONLY valid JSON in this format:
+{
+  "text": "Adaptive question text here",
+  "type": "${nextType}"
+}`;
+
+            const messages: Message[] = [
+                {
+                    role: "system",
+                    content: systemPrompt
+                }
+            ];
+
+            try {
+                const nextQuestion = await askAiJson(messages, singleQuestionSchema);
+                session.questions.push(nextQuestion);
+            } catch (aiError) {
+                console.error("Failed to generate adaptive question:", aiError);
+                // Fallback questions to prevent interview blockage
+                const fallbackQuestions: Record<string, string> = {
+                    'project': "Can you explain a challenging technical problem you solved in one of your projects?",
+                    'problem-solving': "How do you approach designing a scalable system or database schema?",
+                    'behavioral': "Tell me about a time when you had to resolve a conflict with a team member.",
+                    'advanced': "What are some advanced optimization techniques you use in your daily coding work?"
+                };
+                const fallbackText = fallbackQuestions[nextType] || "Can you tell me more about your technical background?";
+                session.questions.push({ text: fallbackText, type: nextType });
+            }
         }
 
         await session.save();
@@ -272,7 +313,8 @@ export const submitAnswer = async (req: Request, res: Response): Promise<void> =
         res.status(200).json({
             success: true,
             status: session.status,
-            currentQuestionIndex: session.currentQuestionIndex
+            currentQuestionIndex: session.currentQuestionIndex,
+            session
         });
 
     } catch (error) {

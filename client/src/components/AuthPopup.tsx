@@ -60,14 +60,14 @@ const AuthPopup = ({ onClose }: AuthPopupProps) => {
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
-        className="relative w-full max-w-sm bg-[#111111] border border-white/10 rounded-[2.5rem] p-10 shadow-2xl text-center"
+        className="relative w-full max-w-sm dark:bg-[#111111] light:bg-white dark:border-white/10 light:border-gray-200 rounded-[2.5rem] p-10 shadow-2xl text-center"
       >
         {onClose && (
           <motion.button 
             whileHover={{ scale: 1.1, rotate: 90 }}
             whileTap={{ scale: 0.9 }}
             onClick={onClose}
-            className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors"
+            className="absolute top-6 right-6 dark:text-gray-500 light:text-gray-400 hover:dark:text-white hover:light:text-gray-900 transition-colors"
           >
             <X className="w-5 h-5" />
           </motion.button>
@@ -88,7 +88,7 @@ const AuthPopup = ({ onClose }: AuthPopupProps) => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="text-2xl font-bold text-white mb-4 tracking-tight"
+          className="text-2xl font-bold dark:text-white light:text-gray-900 mb-4 tracking-tight"
         >
           Login to Continue
         </motion.h2>
@@ -97,7 +97,7 @@ const AuthPopup = ({ onClose }: AuthPopupProps) => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="text-gray-400 text-sm leading-relaxed mb-10 px-2 font-light"
+          className="dark:text-gray-400 light:text-gray-600 text-sm leading-relaxed mb-10 px-2 font-light"
         >
           Unlock the full potential of Evelify. Sign in to save your interview progress and access advanced AI features.
         </motion.p>
@@ -107,18 +107,18 @@ const AuthPopup = ({ onClose }: AuthPopupProps) => {
           whileTap={{ scale: 0.98 }}
           onClick={handleGoogleAuth}
           disabled={loading}
-          className="w-full group bg-white hover:bg-gray-100 text-black font-bold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-white/10 disabled:opacity-70"
+          className="w-full group dark:bg-white light:bg-gray-900 hover:dark:bg-gray-100 hover:light:bg-gray-800 dark:text-black light:text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg disabled:opacity-70"
         >
           {loading ? (
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
             >
-              <Loader2 className="w-5 h-5 text-black" />
+              <Loader2 className="w-5 h-5 dark:text-black light:text-white" />
             </motion.div>
           ) : (
             <>
-              <GoogleIcon className="w-5 h-5 text-black group-hover:scale-110 transition-transform" />
+              <GoogleIcon className="w-5 h-5 dark:text-black light:text-white group-hover:scale-110 transition-transform" />
               <span>Continue with Google</span>
             </>
           )}
@@ -128,7 +128,7 @@ const AuthPopup = ({ onClose }: AuthPopupProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="mt-8 text-[10px] text-gray-600 uppercase tracking-widest font-semibold"
+          className="mt-8 text-[10px] dark:text-gray-600 light:text-gray-400 uppercase tracking-widest font-semibold"
         >
           Evelify AI Agent
         </motion.p>

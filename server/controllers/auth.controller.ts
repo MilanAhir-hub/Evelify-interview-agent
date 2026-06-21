@@ -1,16 +1,33 @@
 import { Request, Response } from 'express';
 import User from '../models/user.model.js';
 import generateToken from '../config/token.js';
+import admin from '../config/firebaseAdmin.js';
 
 export const googleAuth = async (req: Request, res: Response): Promise<any> => {
     console.log("Google Auth Controller Hit:", req.body);
 
     try {
         // 1. Get frontend data
-        const { name, email } = req.body;
+        const { idToken } = req.body;
 
-        if (!name || !email) {
-            return res.status(400).json({ success: false, message: "Name and email are required" });
+        if (!idToken) {
+            return res.status(400).json({ success: false, message: "ID token is required" });
+        }
+
+        // Verify Firebase ID Token
+        let decodedToken;
+        try {
+            decodedToken = await admin.auth().verifyIdToken(idToken);
+        } catch (verifyError: any) {
+            console.error("Firebase ID Token verification failed:", verifyError);
+            return res.status(401).json({ success: false, message: "Unauthorized: Invalid Firebase token" });
+        }
+
+        const email = decodedToken.email;
+        const name = decodedToken.name || email?.split('@')[0] || "User";
+
+        if (!email) {
+            return res.status(400).json({ success: false, message: "Email not found in token" });
         }
 
         // 2. Find existing user or create a new one

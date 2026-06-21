@@ -29,8 +29,8 @@ const Dropdown = ({ trigger, children, align = 'right', className = '' }: Dropdo
 
       {isOpen && (
         <div 
-          className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-3 w-56 bg-[#111111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[100] animate-in fade-in zoom-in duration-200 origin-top-${align}`}
-          onClick={() => setIsOpen(false)} // Close on item click
+          className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-3 w-56 dark:bg-[#111111] light:bg-white dark:border-white/10 light:border-gray-200 rounded-2xl shadow-2xl overflow-hidden z-[100] animate-in fade-in zoom-in duration-200 origin-top-${align}`}
+          onClick={() => setIsOpen(false)}
         >
           {children}
         </div>

@@ -8,6 +8,19 @@
   <title>Evelify | AI Interview Agent</title>
 </head>
 
+<body>
+  <script>
+    // Inline theme init — runs before React to prevent FOUC
+    (function() {
+      var stored = localStorage.getItem('evelify-theme-mode') || 'system';
+      var theme = stored;
+      if (stored === 'system') {
+        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.classList.add(theme);
+      document.body.style.backgroundColor = theme === 'dark' ? '#0B1120' : '#FFFFFF';
+    })();
+  </script>
   <div id="root"></div>
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script type="module" src="/src/main.tsx"></script>

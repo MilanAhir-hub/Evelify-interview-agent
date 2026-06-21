@@ -96,26 +96,26 @@ const History = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
+    <div className="min-h-screen dark:bg-[#050505] light:bg-gray-50 dark:text-white light:text-gray-900">
       <Navbar />
       
-      <main className="max-w-5xl mx-auto px-4 py-12">
+      <main className="max-w-5xl mx-auto px-3 sm:px-4 pt-24 sm:pt-28 md:pt-32 pb-8 md:pb-12">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="mb-8"
+          className="mb-6 md:mb-8"
         >
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
             <motion.div
               animate={{ rotate: [0, 10, -10, 0] }}
               transition={{ duration: 3, repeat: Infinity }}
             >
-              <Sparkles className="w-6 h-6 text-blue-400" />
+              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
             </motion.div>
-            <h1 className="text-3xl font-bold">Interview History</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold dark:text-white light:text-gray-900">Interview History</h1>
           </div>
-          <p className="text-gray-400">Review your past mock interviews and track your progress</p>
+          <p className="dark:text-gray-400 light:text-gray-600 text-sm sm:text-base">Review your past mock interviews and track your progress</p>
         </motion.div>
 
         <AnimatePresence mode="wait">
@@ -149,7 +149,7 @@ const History = () => {
               >
                 <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
               </motion.div>
-              <p className="text-gray-400">{error}</p>
+              <p className="dark:text-gray-400 light:text-gray-600">{error}</p>
             </motion.div>
           ) : history.length === 0 ? (
             <motion.div 
@@ -162,15 +162,15 @@ const History = () => {
                 whileHover={{ scale: 1.1, rotate: 5 }}
                 className="inline-block"
               >
-                <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                <FileText className="w-16 h-16 dark:text-gray-600 light:text-gray-400 mx-auto mb-4" />
               </motion.div>
-              <h2 className="text-xl font-semibold mb-2">No Interviews Yet</h2>
-              <p className="text-gray-400 mb-6">Start your first mock interview to see your history here</p>
+              <h2 className="text-xl font-semibold mb-2 dark:text-white light:text-gray-900">No Interviews Yet</h2>
+              <p className="dark:text-gray-400 light:text-gray-600 mb-6">Start your first mock interview to see your history here</p>
               <motion.button
                 whileHover={{ scale: 1.05, boxShadow: "0 10px 30px rgba(59, 130, 246, 0.3)" }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => navigate('/interview')}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-medium transition-colors"
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-medium transition-colors text-white"
               >
                 Start Interview
               </motion.button>
@@ -180,7 +180,7 @@ const History = () => {
               key="list"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="grid gap-6"
+              className="grid gap-4 sm:gap-6"
             >
               {history.map((item, index) => (
                 <motion.div
@@ -188,79 +188,79 @@ const History = () => {
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  whileHover={{ y: -3, borderColor: "rgba(75, 85, 99, 0.5)" }}
-                  className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition-colors"
+                  whileHover={{ y: -3 }}
+                  className="dark:bg-gray-900/50 light:bg-white dark:border-gray-800 light:border-gray-200 border rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:dark:border-gray-700 hover:light:border-gray-300 transition-colors"
                 >
-                  <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+                  <div className="flex flex-col lg:flex-row lg:items-start gap-4 sm:gap-6">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
                         <motion.h3 
                           whileHover={{ x: 5 }}
-                          className="text-xl font-semibold"
+                          className="text-lg sm:text-xl font-semibold dark:text-white light:text-gray-900"
                         >
                           {item.role}
                         </motion.h3>
                         <motion.span 
                           whileHover={{ scale: 1.05 }}
-                          className={`px-3 py-1 rounded-full text-xs font-medium border ${getRecommendationColor(item.report?.recommendation || '')}`}
+                          className={`px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-medium border ${getRecommendationColor(item.report?.recommendation || '')}`}
                         >
                           {item.report?.recommendation || 'Pending'}
                         </motion.span>
                       </div>
                       
-                      <div className="flex items-center gap-4 text-sm text-gray-400 mb-4">
+                      <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm dark:text-gray-400 light:text-gray-600 mb-3 sm:mb-4">
                         <motion.div 
                           whileHover={{ scale: 1.05 }}
                           className="flex items-center gap-1"
                         >
-                          <Calendar className="w-4 h-4" />
+                          <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           <span>{formatDate(item.createdAt)}</span>
                         </motion.div>
                         <span>•</span>
                         <span>{item.experience}</span>
                       </div>
 
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {item.skills.slice(0, 4).map((skill, idx) => (
+                      <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3 sm:mb-4">
+                        {item.skills.slice(0, 3).map((skill, idx) => (
                           <motion.span
                             key={idx}
                             whileHover={{ scale: 1.05 }}
-                            className="px-3 py-1 bg-gray-800/80 text-gray-300 text-sm rounded-full cursor-default"
+                            className="px-2 sm:px-3 py-0.5 sm:py-1 dark:bg-gray-800/80 light:bg-gray-100 dark:text-gray-300 light:text-gray-700 text-xs sm:text-sm rounded-full cursor-default"
                           >
                             {skill}
                           </motion.span>
                         ))}
-                        {item.skills.length > 4 && (
-                          <span className="px-3 py-1 bg-gray-800/80 text-gray-400 text-sm rounded-full">
-                            +{item.skills.length - 4} more
+                        {item.skills.length > 3 && (
+                          <span className="px-2 sm:px-3 py-0.5 sm:py-1 dark:bg-gray-800/80 light:bg-gray-100 dark:text-gray-400 light:text-gray-500 text-xs sm:text-sm rounded-full">
+                            +{item.skills.length - 3}
                           </span>
                         )}
                       </div>
 
                       {item.report && (
-                        <div className="grid grid-cols-2 gap-4 mt-4">
-                          <div className="space-y-2">
-                            <div className="text-xs text-gray-500 uppercase tracking-wider">Top Strengths</div>
+                        <div className="grid grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4">
+                          <div className="space-y-1.5 sm:space-y-2">
+                            <div className="text-[10px] sm:text-xs dark:text-gray-500 light:text-gray-400 uppercase tracking-wider">Top Strengths</div>
                             {item.report.strengths.slice(0, 2).map((strength, idx) => (
                               <motion.div 
                                 key={idx}
                                 whileHover={{ x: 5 }}
-                                className="flex items-center gap-2 text-sm text-green-400"
+                                className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-green-400"
                               >
-                                <TrendingUp className="w-3 h-3" />
+                                <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                                 <span className="truncate">{strength}</span>
                               </motion.div>
                             ))}
                           </div>
-                          <div className="space-y-2">
-                            <div className="text-xs text-gray-500 uppercase tracking-wider">Areas to Improve</div>
+                          <div className="space-y-1.5 sm:space-y-2">
+                            <div className="text-[10px] sm:text-xs dark:text-gray-500 light:text-gray-400 uppercase tracking-wider">Areas to Improve</div>
                             {item.report.weaknesses.slice(0, 2).map((weakness, idx) => (
                               <motion.div 
                                 key={idx}
                                 whileHover={{ x: 5 }}
-                                className="flex items-center gap-2 text-sm text-orange-400"
+                                className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-orange-400"
                               >
-                                <AlertCircle className="w-3 h-3" />
+                                <AlertCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                                 <span className="truncate">{weakness}</span>
                               </motion.div>
                             ))}
@@ -274,19 +274,19 @@ const History = () => {
                         whileHover={{ scale: 1.02 }}
                         className="lg:w-64 flex-shrink-0"
                       >
-                        <div className="bg-gray-800/50 rounded-xl p-4">
+                        <div className="dark:bg-gray-800/50 light:bg-gray-100 rounded-xl p-4">
                           <div className="text-center mb-4">
                             <motion.div 
                               initial={{ scale: 0 }}
                               animate={{ scale: 1 }}
                               transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
-                              className="text-4xl font-bold mb-1"
+                              className="text-4xl font-bold mb-1 dark:text-white light:text-gray-900"
                             >
                               <span className={getScoreColor(item.report.finalCredits)}>
                                 {item.report.finalCredits}%
                               </span>
                             </motion.div>
-                            <div className="text-xs text-gray-500 uppercase">Final Score</div>
+                            <div className="text-xs dark:text-gray-500 light:text-gray-400 uppercase">Final Score</div>
                           </div>
 
                           <div className="space-y-2">
@@ -299,10 +299,10 @@ const History = () => {
                             ].map((metric, idx) => (
                               <div key={idx}>
                                 <div className="flex justify-between text-xs">
-                                  <span className="text-gray-400">{metric.label}</span>
-                                  <span>{metric.value}</span>
+                                  <span className="dark:text-gray-400 light:text-gray-600">{metric.label}</span>
+                                  <span className="dark:text-white light:text-gray-900">{metric.value}</span>
                                 </div>
-                                <div className="w-full bg-gray-700 rounded-full h-1.5 mt-1">
+                                <div className="w-full dark:bg-gray-700 light:bg-gray-200 rounded-full h-1.5 mt-1">
                                   <motion.div
                                     initial={{ width: 0 }}
                                     animate={{ width: `${(metric.value / 100) * 100}%` }}
@@ -328,16 +328,16 @@ const History = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="flex items-center justify-center gap-2 mt-8"
+            className="flex items-center justify-center gap-1 sm:gap-2 mt-6 sm:mt-8"
           >
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => handlePageChange(pagination.currentPage - 1)}
               disabled={pagination.currentPage === 1}
-              className="p-2 rounded-lg border border-gray-700 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-1.5 sm:p-2 rounded-lg border dark:border-gray-700 light:border-gray-300 dark:hover:bg-gray-800 light:hover:bg-gray-100 dark:text-gray-300 light:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             </motion.button>
             
             {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
@@ -346,10 +346,10 @@ const History = () => {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => handlePageChange(page)}
-                className={`w-10 h-10 rounded-lg font-medium transition-colors ${
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg font-medium text-xs sm:text-sm transition-colors ${
                   page === pagination.currentPage
                     ? 'bg-blue-600 text-white'
-                    : 'border border-gray-700 hover:bg-gray-800'
+                    : 'border dark:border-gray-700 light:border-gray-300 dark:hover:bg-gray-800 light:hover:bg-gray-100 dark:text-gray-300 light:text-gray-700'
                 }`}
               >
                 {page}
@@ -361,9 +361,9 @@ const History = () => {
               whileTap={{ scale: 0.9 }}
               onClick={() => handlePageChange(pagination.currentPage + 1)}
               disabled={pagination.currentPage === pagination.totalPages}
-              className="p-2 rounded-lg border border-gray-700 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-1.5 sm:p-2 rounded-lg border dark:border-gray-700 light:border-gray-300 dark:hover:bg-gray-800 light:hover:bg-gray-100 dark:text-gray-300 light:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </motion.button>
           </motion.div>
         )}

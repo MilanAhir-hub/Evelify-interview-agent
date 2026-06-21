@@ -22,15 +22,14 @@ const Auth = () => {
         try {
             const response = await signInWithPopup(auth, provider);
             let user = response.user;
-            let name = user.displayName;
-            let email = user.email;
+            const idToken = await user.getIdToken();
 
-            const result = await axios.post(server_url + "/api/auth/google", { name, email }, { withCredentials: true });
+            const result = await axios.post(server_url + "/api/auth/google", { idToken }, { withCredentials: true });
 
             // Update Redux state with the user data returned from the server
             if (result.data.success) {
                 dispatch(setUser(result.data.user));
-                navigate('/');
+                navigate('/', { replace: true });
             }
             console.log(result);
         } catch (error: any) {
@@ -46,14 +45,14 @@ const Auth = () => {
 
 
   return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4 relative overflow-hidden text-white font-inter">
+    <div className="min-h-screen dark:bg-[#050505] light:bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden dark:text-white light:text-gray-900 font-inter">
       
       {/* Background Decorative Elements */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px]"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/10 rounded-full blur-[120px]"></div>
 
       {/* Auth Card */}
-      <div className="w-full max-w-md bg-[#111111]/80 backdrop-blur-xl border border-white/10 rounded-[2rem] p-10 shadow-2xl relative z-10 transition-all hover:border-white/20">
+      <div className="w-full max-w-md dark:bg-[#111111]/80 light:bg-white/80 backdrop-blur-xl dark:border-white/10 light:border-gray-200 rounded-[2rem] p-10 shadow-2xl relative z-10 transition-all hover:dark:border-white/20 hover:light:border-gray-300">
         
         {/* Logo/Icon */}
         <div className="flex justify-center mb-10">
@@ -64,10 +63,10 @@ const Auth = () => {
 
         {/* Text Header */}
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold tracking-tight mb-3 text-white">
+          <h1 className="text-3xl font-bold tracking-tight mb-3 dark:text-white light:text-gray-900">
             Welcome to Evelify
           </h1>
-          <p className="text-gray-400 text-sm font-medium leading-relaxed">
+          <p className="dark:text-gray-400 light:text-gray-600 text-sm font-medium leading-relaxed">
             Experience the future of interview preparation with AI-powered simulations.
           </p>
         </div>
@@ -76,12 +75,12 @@ const Auth = () => {
         <button 
           onClick={handleGoogleAuth}
           disabled={isLoading}
-          className={`w-full group bg-white hover:bg-gray-100 text-[#0B1120] font-bold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 active:scale-[0.98] shadow-lg ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+          className={`w-full group dark:bg-white light:bg-gray-900 hover:dark:bg-gray-100 hover:light:bg-gray-800 dark:text-[#0B1120] light:text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 active:scale-[0.98] shadow-lg ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
         >
           {isLoading ? (
-            <Loader2 className="w-6 h-6 animate-spin text-[#0B1120]" />
+            <Loader2 className="w-6 h-6 animate-spin dark:text-[#0B1120] light:text-white" />
           ) : (
-            <GoogleIcon className="w-6 h-6 text-[#0B1120] group-hover:scale-110 transition-transform" />
+            <GoogleIcon className="w-6 h-6 dark:text-[#0B1120] light:text-white group-hover:scale-110 transition-transform" />
           )}
           <span>{isLoading ? 'Signing in...' : 'Continue with Google'}</span>
         </button>
@@ -89,7 +88,7 @@ const Auth = () => {
 
         {/* Footer Text */}
         <div className="mt-10 text-center">
-          <p className="text-[11px] text-gray-500 max-w-[280px] mx-auto leading-relaxed font-medium">
+          <p className="text-[11px] dark:text-gray-500 light:text-gray-400 max-w-[280px] mx-auto leading-relaxed font-medium">
             By continuing, you agree to our 
             <span className="text-blue-400 cursor-pointer hover:underline mx-1">Terms</span> 
             and 
