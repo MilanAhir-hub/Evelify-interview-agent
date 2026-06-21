@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import User from '../models/user.model.js';
 import generateToken from '../config/token.js';
-import admin from '../config/firebaseAdmin.js';
+import { verifyFirebaseIdToken } from '../utils/verifyFirebaseToken.js';
 
 export const googleAuth = async (req: Request, res: Response): Promise<any> => {
     console.log("Google Auth Controller Hit:", req.body);
@@ -14,12 +14,13 @@ export const googleAuth = async (req: Request, res: Response): Promise<any> => {
             return res.status(400).json({ success: false, message: "ID token is required" });
         }
 
-        // Verify Firebase ID Token
+        // Verify Firebase ID Token using Google's public keys directly
         let decodedToken;
         try {
-            decodedToken = await admin.auth().verifyIdToken(idToken);
+            decodedToken = await verifyFirebaseIdToken(idToken);
+            console.log("Token verified successfully for:", decodedToken.email);
         } catch (verifyError: any) {
-            console.error("Firebase ID Token verification failed:", verifyError);
+            console.error("Firebase ID Token verification failed:", verifyError.message);
             return res.status(401).json({ success: false, message: "Unauthorized: Invalid Firebase token" });
         }
 
