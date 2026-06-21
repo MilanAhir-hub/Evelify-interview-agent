@@ -21,11 +21,11 @@ const AuthPopup = ({ onClose }: AuthPopupProps) => {
     try {
       setLoading(true);
       const response = await signInWithPopup(auth, provider);
-      const { displayName: name, email } = response.user;
+      const idToken = await response.user.getIdToken();
 
       const result = await axios.post(
         `${server_url}/api/auth/google`,
-        { name, email },
+        { idToken },
         { withCredentials: true }
       );
 
