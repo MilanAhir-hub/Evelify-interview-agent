@@ -1,10 +1,15 @@
 import multer from "multer";
 import path from "path";
+import fs from "fs";
 
 // Define where to store the uploaded files and how to name them
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, "uploads/"); // Make sure this folder exists or create it
+        const uploadDir = "uploads/";
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
     },
     filename: (req: any, file: any, cb: any) => {
         const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);

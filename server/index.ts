@@ -1,6 +1,19 @@
 import dns from 'node:dns';
 dns.setServers(['8.8.8.8', '1.1.1.1']);
 
+// Polyfill Promise.withResolvers for older Node.js versions (e.g. Node < 20.10.0 on Render)
+if (typeof Promise.withResolvers === 'undefined') {
+  (Promise as any).withResolvers = function <T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (reason?: any) => void;
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+}
+
 import dotenv from 'dotenv';
 dotenv.config({ override: true });
 import express, { Request, Response } from 'express';

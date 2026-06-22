@@ -13,6 +13,13 @@ const singleQuestionSchema = z.object({
     type: z.enum(['technical', 'project', 'problem-solving', 'behavioral', 'advanced'])
 });
 
+const resumeDataSchema = z.object({
+    role: z.string().catch("Software Engineer"),
+    experience: z.string().catch("0 years"),
+    projects: z.array(z.string()).catch([]),
+    skills: z.array(z.string()).catch([])
+});
+
 interface ResumeData {
     role: string;
     experience: string;
@@ -99,11 +106,8 @@ Return ONLY valid JSON in this format:
             },
         ];
 
-        // Get AI response
-        const response = await askAi(messages);
-
-        // Convert JSON string into object
-        const parsed: ResumeData = JSON.parse(response || "{}");
+        // Get AI response and parse/validate it
+        const parsed = await askAiJson(messages, resumeDataSchema);
 
         // Delete uploaded file
         await fs.promises.unlink(filePath);
