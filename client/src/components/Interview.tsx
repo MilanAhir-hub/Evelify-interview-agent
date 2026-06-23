@@ -1086,14 +1086,16 @@ const Interview: React.FC<InterviewProps> = ({ InterviewData, onFinish }) => {
                             className={`w-full sm:flex-1 px-10 py-4.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 text-white font-bold text-lg tracking-tight transition-all flex items-center justify-center gap-3 shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed group`}
                         >
                             {aiStatus === 'analyzing' ? (
-                                <motion.div
-                                    animate={{ rotate: 360 }}
-                                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                    className="flex items-center gap-3"
-                                >
-                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                <div className="flex items-center gap-3">
+                                    <motion.div
+                                        animate={{ rotate: 360 }}
+                                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                        className="flex items-center justify-center"
+                                    >
+                                        <Loader2 className="w-5 h-5" />
+                                    </motion.div>
                                     <span>{loadingStep || "Processing Answer..."}</span>
-                                </motion.div>
+                                </div>
                             ) : (
                                 <>
                                     <span>Submit Answer</span>
